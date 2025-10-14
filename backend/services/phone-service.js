@@ -2,7 +2,7 @@ const axios = require('axios');
 
 /**
  * Phone Number Service Integration
- * Supports: 5sim.net, sms-activate.org
+ * Supports: 5sim.net, sms-activate.org, smspool.net
  */
 class PhoneService {
   constructor() {
@@ -10,7 +10,8 @@ class PhoneService {
     this.apiKey = process.env.PHONE_SERVICE_API_KEY;
     this.apiUrls = {
       '5sim': 'https://5sim.net/v1',
-      'sms-activate': 'https://api.sms-activate.org/stubs/handler_api.php'
+      'sms-activate': 'https://api.sms-activate.org/stubs/handler_api.php',
+      'smspool': 'https://api.smspool.net'
     };
   }
 
@@ -30,6 +31,8 @@ class PhoneService {
         return await this.get5simNumber(service);
       } else if (this.provider === 'sms-activate') {
         return await this.getSMSActivateNumber(service);
+      } else if (this.provider === 'smspool') {
+        return await this.getSMSPoolNumber(service);
       } else {
         return {
           success: false,
@@ -122,6 +125,42 @@ class PhoneService {
   }
 
   /**
+   * Get number from SMSPool
+   */
+  async getSMSPoolNumber(service) {
+    try {
+      const response = await axios.post(
+        `${this.apiUrls['smspool']}/purchase/sms`,
+        {
+          key: this.apiKey,
+          country: 'US',
+          service: 'Twitter',
+          pool: 1 // Use pool 1 (cheapest)
+        }
+      );
+
+      if (response.data.success === 1) {
+        return {
+          success: true,
+          number: response.data.number,
+          activationId: response.data.order_id,
+          provider: 'smspool'
+        };
+      } else {
+        return {
+          success: false,
+          error: response.data.message || 'Failed to get number'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  /**
    * Get SMS code from a purchased number
    */
   async getSMSCode(activationId, provider = null) {
@@ -132,6 +171,8 @@ class PhoneService {
         return await this.get5simCode(activationId);
       } else if (usedProvider === 'sms-activate') {
         return await this.getSMSActivateCode(activationId);
+      } else if (usedProvider === 'smspool') {
+        return await this.getSMSPoolCode(activationId);
       }
     } catch (error) {
       return {
@@ -216,6 +257,45 @@ class PhoneService {
   }
 
   /**
+   * Get code from SMSPool
+   */
+  async getSMSPoolCode(activationId) {
+    try {
+      const response = await axios.post(
+        `${this.apiUrls['smspool']}/sms/check`,
+        {
+          key: this.apiKey,
+          orderid: activationId
+        }
+      );
+
+      if (response.data.status === 3) {
+        // Status 3 = SMS received
+        return {
+          success: true,
+          code: response.data.sms
+        };
+      } else if (response.data.status === 1) {
+        // Status 1 = Pending
+        return {
+          success: false,
+          error: 'Waiting for SMS'
+        };
+      } else {
+        return {
+          success: false,
+          error: 'No SMS received'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message
+      };
+    }
+  }
+
+  /**
    * Cancel an activation (if not used)
    */
   async cancelActivation(activationId, provider = null) {
@@ -237,6 +317,11 @@ class PhoneService {
             status: 8, // Cancel
             id: activationId
           }
+        });
+      } else if (usedProvider === 'smspool') {
+        await axios.post(`${this.apiUrls['smspool']}/sms/cancel`, {
+          key: this.apiKey,
+          orderid: activationId
         });
       }
 
@@ -277,6 +362,15 @@ class PhoneService {
           success: true,
           balance: parseFloat(response.data.split(':')[1]),
           currency: 'RUB'
+        };
+      } else if (this.provider === 'smspool') {
+        const response = await axios.post(`${this.apiUrls['smspool']}/request/balance`, {
+          key: this.apiKey
+        });
+        return {
+          success: true,
+          balance: response.data.balance,
+          currency: 'USD'
         };
       }
     } catch (error) {
