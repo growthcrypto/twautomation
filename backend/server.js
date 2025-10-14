@@ -44,11 +44,14 @@ app.use(express.static(path.join(__dirname, '../dashboard')));
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/twitter-automation';
+    console.log('🔄 Connecting to MongoDB:', mongoUri.replace(/\/\/.*@/, '//<credentials>@'));
     await mongoose.connect(mongoUri);
     console.log('✅ MongoDB connected');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
-    process.exit(1);
+    console.error('⚠️  App will start but database features will not work');
+    console.error('   Please set MONGODB_URI environment variable');
+    // Don't exit - let app start anyway
   }
 };
 
