@@ -462,8 +462,14 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
+});
+
+// Simple test endpoint
+app.get('/test', (req, res) => {
+  res.send('Twitter Automation System is running! ✅');
 });
 
 // Dashboard route
@@ -477,28 +483,27 @@ app.get('/', (req, res) => {
 
 const startServer = async () => {
   try {
-    // Connect to database
-    await connectDB();
-
-    // Check AdsPower connection
-    const adsPowerOnline = await adsPowerController.checkConnection();
-    if (!adsPowerOnline) {
-      console.warn('⚠️  AdsPower is not running. Browser automation will not work.');
-      console.warn('   Please start AdsPower before running campaigns.');
-    } else {
-      console.log('✅ AdsPower connected');
-    }
-
-    // Start server
+    // Start server FIRST (so Railway knows app is responding)
     app.listen(PORT, () => {
       console.log(`\n🚀 Twitter Automation System`);
-      console.log(`   Server running on http://localhost:${PORT}`);
-      console.log(`   Dashboard: http://localhost:${PORT}`);
-      console.log(`   API: http://localhost:${PORT}/api`);
-      console.log(`\n📊 System Status:`);
-      console.log(`   Database: ${mongoose.connection.readyState === 1 ? '✅ Connected' : '❌ Disconnected'}`);
-      console.log(`   AdsPower: ${adsPowerOnline ? '✅ Online' : '⚠️  Offline'}`);
-      console.log(`\n💡 To start automation, call: POST /api/system/start\n`);
+      console.log(`   Server running on port ${PORT}`);
+      console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+    // Then try to connect to MongoDB (non-blocking)
+    connectDB().then(() => {
+      console.log('✅ MongoDB connected successfully');
+    }).catch((err) => {
+      console.error('⚠️  MongoDB connection failed, but server is running');
+    });
+
+    // Check AdsPower (non-blocking)
+    adsPowerController.checkConnection().then((online) => {
+      if (!online) {
+        console.warn('⚠️  AdsPower is not running. Browser automation will not work.');
+      } else {
+        console.log('✅ AdsPower connected');
+      }
     });
 
   } catch (error) {
