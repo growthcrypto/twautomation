@@ -12,6 +12,7 @@ const adsPowerController = require('./services/adspower-controller');
 // Routes
 const extensionRoutes = require('./routes/extension-api');
 const configRoutes = require('./routes/config-api');
+const resourceRoutes = require('./routes/resource-api');
 
 // Models
 const {
@@ -66,6 +67,12 @@ app.use('/api/extension', extensionRoutes);
 
 // Config API
 app.use('/api/configs', configRoutes);
+
+// Resource API
+app.use('/api/resources', resourceRoutes);
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Cookie Management
 const cookieManager = require('./services/cookie-manager');
@@ -128,14 +135,58 @@ app.get('/api/accounts/:id', async (req, res) => {
 
 app.post('/api/accounts', async (req, res) => {
   try {
-    const accountLifecycle = require('./services/account-lifecycle');
-    const result = await accountLifecycle.createNewAccount(req.body);
+    const account = await TwitterAccount.create(req.body);
+    res.json({ success: true, account });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Bulk account creation
+app.post('/api/accounts/bulk-create', async (req, res) => {
+  try {
+    const { count, role, niche, linkedChatUsername } = req.body;
     
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(400).json(result);
+    if (!count || count < 1 || count > 50) {
+      return res.status(400).json({ success: false, error: 'Count must be between 1 and 50' });
     }
+
+    console.log(`🤖 Starting bulk creation of ${count} ${role} accounts...`);
+
+    const accountCreator = require('./services/twitter-account-creator');
+    const results = [];
+
+    for (let i = 0; i < count; i++) {
+      const result = await accountCreator.createAccount({
+        role,
+        niche,
+        linkedChatAccountUsername: linkedChatUsername
+      });
+
+      results.push(result);
+
+      if (result.success) {
+        console.log(`✅ Created account ${i + 1}/${count}: ${result.username}`);
+      } else {
+        console.log(`❌ Failed account ${i + 1}/${count}: ${result.error}`);
+      }
+
+      // Delay between creations
+      if (i < count - 1) {
+        await new Promise(resolve => setTimeout(resolve, 60000)); // 1 min between accounts
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+
+    res.json({
+      success: true,
+      total: count,
+      successful: successCount,
+      failed: count - successCount,
+      results
+    });
+
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

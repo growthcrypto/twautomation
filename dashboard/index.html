@@ -318,14 +318,79 @@
                     <h3 class="text-lg font-bold text-white mb-4">
                         <i class="fas fa-images text-purple-400 mr-2"></i>Profile Pictures
                     </h3>
-                    <p class="text-gray-400 text-sm mb-4">Upload profile pictures for auto-created accounts</p>
-                    <input type="file" id="profilePicsUpload" multiple accept="image/*" class="hidden">
-                    <button onclick="document.getElementById('profilePicsUpload').click()" class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 rounded font-medium">
-                        <i class="fas fa-upload mr-2"></i>Upload Images
-                    </button>
+                    <form id="profilePicsForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Niche</label>
+                            <select id="picNiche" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                                <option value="soccer">Soccer</option>
+                                <option value="politics">Politics</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="drama">Drama</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Select Images (up to 50)</label>
+                            <input type="file" id="profilePicsUpload" multiple accept="image/*" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                        </div>
+                        <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 rounded font-medium">
+                            <i class="fas fa-upload mr-2"></i>Upload Images
+                        </button>
+                    </form>
                     <div id="profilePicsList" class="mt-4 text-gray-400 text-sm">
                         No images uploaded yet
                     </div>
+                </div>
+
+                <!-- Emails -->
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-envelope text-red-400 mr-2"></i>Email Pool
+                    </h3>
+                    <form id="emailsForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Paste Emails (one per line)</label>
+                            <textarea id="emailsList" rows="6" placeholder="email1@gmail.com:password1&#10;email2@gmail.com:password2&#10;email3@protonmail.com:password3" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white font-mono text-sm"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Format: email:password (one per line)</p>
+                        </div>
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded font-medium">
+                            <i class="fas fa-plus mr-2"></i>Add Emails
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Bio Templates -->
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-align-left text-green-400 mr-2"></i>Bio Templates
+                    </h3>
+                    <form id="bioTemplateForm" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Niche</label>
+                                <select name="niche" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                                    <option value="soccer">Soccer</option>
+                                    <option value="politics">Politics</option>
+                                    <option value="gaming">Gaming</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Role</label>
+                                <select name="role" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                                    <option value="follow">Follow/Unfollow</option>
+                                    <option value="massdm">Mass DM</option>
+                                    <option value="chat">Chat</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Bio Template</label>
+                            <textarea name="template" rows="3" placeholder="⚽ Hot takes | Main: @{chat_account}" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white"></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Use {chat_account} as placeholder</p>
+                        </div>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded font-medium">
+                            <i class="fas fa-plus mr-2"></i>Add Template
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

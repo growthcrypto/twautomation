@@ -469,6 +469,132 @@ async function loadProxies() {
     }
 }
 
+// Profile pics upload
+document.getElementById('profilePicsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const niche = document.getElementById('picNiche').value;
+    const files = document.getElementById('profilePicsUpload').files;
+    
+    if (files.length === 0) {
+        alert('Please select images');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('niche', niche);
+    for (let file of files) {
+        formData.append('images', file);
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/resources/profile-pics`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ ${result.message}`);
+            e.target.reset();
+        } else {
+            alert('❌ Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+});
+
+// Emails upload
+document.getElementById('emailsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const emailsText = document.getElementById('emailsList').value;
+    const lines = emailsText.split('\n').filter(l => l.trim());
+    
+    const emails = lines.map(line => {
+        const [address, password] = line.split(':');
+        return {
+            address: address.trim(),
+            password: password?.trim() || '',
+            provider: address.includes('@gmail') ? 'gmail' : 'other'
+        };
+    });
+
+    try {
+        const response = await fetch(`${API_URL}/resources/emails`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ emails })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ ${result.message}`);
+            e.target.reset();
+        } else {
+            alert('❌ Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+});
+
+// Bio template
+document.getElementById('bioTemplateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = {
+        niche: formData.get('niche'),
+        role: formData.get('role'),
+        template: formData.get('template'),
+        variables: ['chat_account']
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/resources/bio-templates`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ Bio template added!');
+            e.target.reset();
+        } else {
+            alert('❌ Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+});
+
+// API Keys form
+document.getElementById('apiKeysForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    
+    // Save phone service
+    if (formData.get('phoneApiKey')) {
+        await fetch(`${API_URL}/resources/phone-service`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                provider: '5sim',
+                apiKey: formData.get('phoneApiKey')
+            })
+        });
+    }
+
+    alert('✅ API keys saved!');
+});
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
