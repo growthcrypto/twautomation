@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Automation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-active { background: #10b981; }
+        .status-warning { background: #f59e0b; }
+        .status-error { background: #ef4444; }
+        .status-offline { background: #6b7280; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-4xl font-bold text-white mb-2">
+                        <i class="fab fa-twitter text-blue-400 mr-3"></i>
+                        Twitter Automation System
+                    </h1>
+                    <p class="text-gray-200">Mass traffic generation → AI chat conversion</p>
+                </div>
+                <div class="flex gap-4">
+                    <a href="configs.html" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold transition">
+                        <i class="fas fa-cog mr-2"></i>Configs
+                    </a>
+                    <button onclick="startSystem()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition">
+                        <i class="fas fa-play mr-2"></i>Start System
+                    </button>
+                    <button onclick="stopSystem()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold transition">
+                        <i class="fas fa-stop mr-2"></i>Stop System
+                    </button>
+                    <button onclick="refreshDashboard()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold transition">
+                        <i class="fas fa-sync mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="glass rounded-2xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-white mb-4">System Status</h2>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-white/10 rounded-xl p-4">
+                    <span id="status-database" class="status-dot status-offline"></span>
+                    <span class="text-white font-semibold">Database</span>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4">
+                    <span id="status-adspower" class="status-dot status-offline"></span>
+                    <span class="text-white font-semibold">AdsPower</span>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4">
+                    <span id="status-health" class="status-dot status-offline"></span>
+                    <span class="text-white font-semibold">Health Monitor</span>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4">
+                    <span id="status-scheduler" class="status-dot status-offline"></span>
+                    <span class="text-white font-semibold">Task Scheduler</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="grid grid-cols-4 gap-6 mb-8">
+            <div class="glass rounded-2xl p-6">
+                <div class="text-gray-300 text-sm mb-2">Total Accounts</div>
+                <div class="text-4xl font-bold text-white" id="metric-total-accounts">0</div>
+                <div class="text-green-400 text-sm mt-2">
+                    <span id="metric-active-accounts">0</span> active
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <div class="text-gray-300 text-sm mb-2">Today's Activity</div>
+                <div class="text-4xl font-bold text-white" id="metric-today-follows">0</div>
+                <div class="text-gray-300 text-sm mt-2">
+                    Follows: <span id="metric-today-follows-detail">0</span> | 
+                    DMs: <span id="metric-today-dms">0</span>
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <div class="text-gray-300 text-sm mb-2">Lead Pipeline</div>
+                <div class="text-4xl font-bold text-white" id="metric-leads-active">0</div>
+                <div class="text-gray-300 text-sm mt-2">
+                    <span id="metric-leads-new">0</span> new | 
+                    <span id="metric-leads-link-sent">0</span> link sent
+                </div>
+            </div>
+            <div class="glass rounded-2xl p-6">
+                <div class="text-gray-300 text-sm mb-2">Conversions Today</div>
+                <div class="text-4xl font-bold text-green-400" id="metric-conversions">0</div>
+                <div class="text-gray-300 text-sm mt-2">
+                    $<span id="metric-revenue">0.00</span> revenue
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Overview -->
+        <div class="glass rounded-2xl p-6 mb-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Accounts</h2>
+                <button onclick="showCreateAccountModal()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
+                    <i class="fas fa-plus mr-2"></i>Create Account
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-white">
+                    <thead>
+                        <tr class="border-b border-white/20">
+                            <th class="text-left py-3 px-4">Username</th>
+                            <th class="text-left py-3 px-4">Role</th>
+                            <th class="text-left py-3 px-4">Niche</th>
+                            <th class="text-left py-3 px-4">Status</th>
+                            <th class="text-left py-3 px-4">Today's Activity</th>
+                            <th class="text-left py-3 px-4">Performance</th>
+                            <th class="text-left py-3 px-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="accounts-table-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Lead Pipeline -->
+        <div class="glass rounded-2xl p-6 mb-8">
+            <h2 class="text-2xl font-bold text-white mb-6">Lead Pipeline</h2>
+            <div class="grid grid-cols-5 gap-4 mb-6">
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-white" id="pipeline-new">0</div>
+                    <div class="text-gray-300 text-sm">New Leads</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-white" id="pipeline-dm-sent">0</div>
+                    <div class="text-gray-300 text-sm">DM Sent</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-white" id="pipeline-conversation">0</div>
+                    <div class="text-gray-300 text-sm">In Conversation</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-white" id="pipeline-link-sent">0</div>
+                    <div class="text-gray-300 text-sm">Link Sent</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400" id="pipeline-converted">0</div>
+                    <div class="text-gray-300 text-sm">Converted</div>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-white">
+                    <thead>
+                        <tr class="border-b border-white/20">
+                            <th class="text-left py-3 px-4">Username</th>
+                            <th class="text-left py-3 px-4">Status</th>
+                            <th class="text-left py-3 px-4">Source Account</th>
+                            <th class="text-left py-3 px-4">Chat Account</th>
+                            <th class="text-left py-3 px-4">Messages</th>
+                            <th class="text-left py-3 px-4">Last Contact</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leads-table-body">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Task Queue -->
+        <div class="glass rounded-2xl p-6">
+            <h2 class="text-2xl font-bold text-white mb-6">Task Queue</h2>
+            <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-yellow-400" id="tasks-pending">0</div>
+                    <div class="text-gray-300 text-sm">Pending</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-blue-400" id="tasks-in-progress">0</div>
+                    <div class="text-gray-300 text-sm">In Progress</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-green-400" id="tasks-completed">0</div>
+                    <div class="text-gray-300 text-sm">Completed Today</div>
+                </div>
+                <div class="bg-white/10 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-bold text-red-400" id="tasks-failed">0</div>
+                    <div class="text-gray-300 text-sm">Failed Today</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
+

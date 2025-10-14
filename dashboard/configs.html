@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Configs - Twitter Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .section-hidden { display: none; }
+        .section-visible { display: block; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="glass rounded-2xl p-8 mb-8">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-4xl font-bold text-white mb-2">
+                        <i class="fas fa-cog text-purple-400 mr-3"></i>
+                        Campaign Configurations
+                    </h1>
+                    <p class="text-gray-200 text-lg">Configure automation campaigns for your accounts</p>
+                </div>
+                <a href="index.html" class="bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-semibold transition">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="glass rounded-2xl p-6 mb-8">
+            <div class="grid grid-cols-6 gap-4">
+                <button onclick="showSection('accounts')" id="tab-accounts" class="tab-btn bg-purple-600 text-white px-6 py-4 rounded-xl font-semibold transition">
+                    <i class="fas fa-users mb-2"></i><br>Accounts
+                </button>
+                <button onclick="showSection('follow')" id="tab-follow" class="tab-btn bg-gray-700 text-gray-300 px-6 py-4 rounded-xl font-semibold transition">
+                    <i class="fas fa-user-plus mb-2"></i><br>Follow/Unfollow
+                </button>
+                <button onclick="showSection('dm')" id="tab-dm" class="tab-btn bg-gray-700 text-gray-300 px-6 py-4 rounded-xl font-semibold transition">
+                    <i class="fas fa-envelope mb-2"></i><br>Mass DM
+                </button>
+                <button onclick="showSection('chat')" id="tab-chat" class="tab-btn bg-gray-700 text-gray-300 px-6 py-4 rounded-xl font-semibold transition">
+                    <i class="fas fa-robot mb-2"></i><br>AI Chat
+                </button>
+                <button onclick="showSection('warmup')" id="tab-warmup" class="tab-btn bg-gray-700 text-gray-300 px-6 py-4 rounded-xl font-semibold transition">
+                    <i class="fas fa-seedling mb-2"></i><br>Warmup
+                </button>
+                <button onclick="showSection('activity')" id="tab-activity" class="tab-btn bg-gray-700 text-gray-300 px-6 py-4 rounded-xl font-semibold transition">
+                    <i class="fas fa-random mb-2"></i><br>Random Activity
+                </button>
+            </div>
+        </div>
+
+        <!-- Account Registration Section -->
+        <div id="section-accounts" class="section-visible">
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Register Twitter Accounts</h2>
+                
+                <form id="accountForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Twitter Username</label>
+                            <input type="text" name="username" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="@username">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Password</label>
+                            <input type="password" name="password" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Email</label>
+                            <input type="email" name="email" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Phone Number</label>
+                            <input type="text" name="phoneNumber" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="+1234567890">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Role</label>
+                            <select name="role" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                                <option value="traffic">Traffic (Follow/DM)</option>
+                                <option value="chat">Chat (AI Conversion)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Niche</label>
+                            <select name="niche" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                                <option value="soccer">Soccer</option>
+                                <option value="politics">Politics</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="drama">Drama</option>
+                                <option value="fitness">Fitness</option>
+                                <option value="crypto">Crypto</option>
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">OnlyFans Link (if Chat account)</label>
+                            <input type="url" name="ofLink" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="https://onlyfans.com/yourlink">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-lg transition">
+                        <i class="fas fa-plus-circle mr-2"></i>Register Account
+                    </button>
+                </form>
+
+                <div id="accountsList" class="mt-8">
+                    <h3 class="text-xl font-bold text-white mb-4">Registered Accounts</h3>
+                    <div id="accountsTableContainer" class="overflow-x-auto">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow/Unfollow Config Section -->
+        <div id="section-follow" class="section-hidden">
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Follow/Unfollow Campaign Config</h2>
+                <form id="followConfigForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">Campaign Name</label>
+                            <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="Soccer Follow Campaign">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Max Follows/Day</label>
+                            <input type="number" name="maxFollowsPerDay" value="100" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Max Unfollows/Day</label>
+                            <input type="number" name="maxUnfollowsPerDay" value="100" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Delay Between Follows (min seconds)</label>
+                            <input type="number" name="delayMin" value="30" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Delay Between Follows (max seconds)</label>
+                            <input type="number" name="delayMax" value="120" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Break After X Actions</label>
+                            <input type="number" name="breakAfterActions" value="20" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Break Duration (min minutes)</label>
+                            <input type="number" name="breakMin" value="5" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Active Hours Start</label>
+                            <input type="time" name="activeStart" value="08:00" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Active Hours End</label>
+                            <input type="time" name="activeEnd" value="22:00" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg transition">
+                        <i class="fas fa-save mr-2"></i>Save Follow/Unfollow Config
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Mass DM Config Section -->
+        <div id="section-dm" class="section-hidden">
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Mass DM Campaign Config</h2>
+                <form id="dmConfigForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">Campaign Name</label>
+                            <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="Soccer Mass DM">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Max DMs/Day</label>
+                            <input type="number" name="maxDMsPerDay" value="50" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Delay Between DMs (min seconds)</label>
+                            <input type="number" name="delayMin" value="60" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">Message Template 1</label>
+                            <textarea name="template1" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="Hey! Your take on {topic} is wild 😂 My main is @{chat_account} - way more active there!"></textarea>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">Message Template 2 (optional)</label>
+                            <textarea name="template2" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="Yo! Just saw your post about {topic} 🔥 Let's debate on my main @{chat_account}"></textarea>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-lg transition">
+                        <i class="fas fa-save mr-2"></i>Save Mass DM Config
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- AI Chat Config Section -->
+        <div id="section-chat" class="section-hidden">
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">AI Chat Config</h2>
+                <form id="chatConfigForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">Campaign Name</label>
+                            <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="Soccer AI Chat">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">AI API URL</label>
+                            <input type="url" name="apiUrl" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="https://api.openai.com/v1/chat/completions">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">AI API Key</label>
+                            <input type="text" name="apiKey" required class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="sk-...">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Messages Before OF Link</label>
+                            <input type="number" name="messagesBeforeLink" value="12" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Max Messages Per Conversation</label>
+                            <input type="number" name="maxMessages" value="30" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label class="block text-white font-semibold mb-2">AI Personality Instructions</label>
+                            <textarea name="personality" rows="4" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white" placeholder="You're a soccer-obsessed girl who loves debating. Argue passionately about Messi vs Ronaldo..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-xl font-bold text-lg transition">
+                        <i class="fas fa-save mr-2"></i>Save AI Chat Config
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Warmup Config Section -->
+        <div id="section-warmup" class="section-hidden">
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Warmup Config</h2>
+                <p class="text-gray-200 mb-4">Default 7-day warmup schedule is pre-configured. Accounts will automatically progress through warmup days.</p>
+                <div class="bg-green-500/20 border border-green-500 rounded-xl p-4 text-white">
+                    <i class="fas fa-check-circle mr-2"></i>Warmup automation is enabled by default for all new accounts.
+                </div>
+            </div>
+        </div>
+
+        <!-- Random Activity Config Section -->
+        <div id="section-activity" class="section-hidden">
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6">Random Activity Config</h2>
+                <p class="text-gray-200 mb-4">Random activity helps accounts look human. Enabled by default for all active accounts.</p>
+                <div class="bg-blue-500/20 border border-blue-500 rounded-xl p-4 text-white">
+                    <i class="fas fa-info-circle mr-2"></i>Random activity (profile browsing, feed scrolling, likes) runs automatically.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/configs.js"></script>
+</body>
+</html>
+

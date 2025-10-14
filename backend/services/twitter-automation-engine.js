@@ -1,0 +1,652 @@
+const twitterSessionManager = require('./twitter-session-manager');
+const { TwitterLead } = require('../models');
+
+/**
+ * Twitter Automation Engine
+ * Direct browser control for all Twitter actions
+ * NO EXTENSIONS - Pure Puppeteer automation
+ */
+class TwitterAutomationEngine {
+  constructor() {
+    this.activeActions = new Map(); // Track running actions per account
+  }
+
+  // ============================================
+  // FOLLOW/UNFOLLOW ACTIONS
+  // ============================================
+
+  /**
+   * Follow a user
+   */
+  async follow(accountId, targetUsername, config = {}) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      console.log(`👤 Following @${targetUsername}...`);
+
+      // Random activity before follow (if configured)
+      if (config.randomActivity?.viewProfile?.enabled) {
+        await this.viewProfile(page, targetUsername, config.randomActivity.viewProfile.scrollTime);
+      }
+
+      // Navigate to target profile
+      await page.goto(`https://twitter.com/${targetUsername}`, { 
+        waitUntil: 'networkidle2', 
+        timeout: 30000 
+      });
+      await this.humanDelay(2000, 4000);
+
+      // Check if already following
+      const alreadyFollowing = await page.$('[data-testid*="unfollow"]');
+      if (alreadyFollowing) {
+        console.log(`⚠️  Already following @${targetUsername}`);
+        return { success: false, reason: 'already_following' };
+      }
+
+      // Check filters
+      if (config.skipIfPrivate) {
+        const isPrivate = await this.isAccountPrivate(page);
+        if (isPrivate) {
+          console.log(`🔒 Skipping @${targetUsername} (private account)`);
+          return { success: false, reason: 'private_account' };
+        }
+      }
+
+      if (config.skipIfNoProfilePic) {
+        const hasProfilePic = await this.hasProfilePicture(page);
+        if (!hasProfilePic) {
+          console.log(`👤 Skipping @${targetUsername} (no profile pic)`);
+          return { success: false, reason: 'no_profile_pic' };
+        }
+      }
+
+      // Get follow button
+      const followBtn = await page.$('[data-testid$="follow"]');
+      if (!followBtn) {
+        throw new Error('Follow button not found');
+      }
+
+      // Random activity: like a recent tweet (if configured)
+      if (config.randomActivity?.likeTargetProfile?.enabled) {
+        const shouldLike = Math.random() * 100 < config.randomActivity.likeTargetProfile.probability;
+        if (shouldLike) {
+          await this.likeRecentTweet(page);
+        }
+      }
+
+      // Click follow
+      await followBtn.click();
+      await this.humanDelay(1000, 2000);
+
+      console.log(`✅ Successfully followed @${targetUsername}`);
+
+      return { success: true, targetUsername };
+
+    } catch (error) {
+      console.error(`❌ Error following @${targetUsername}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Unfollow a user
+   */
+  async unfollow(accountId, targetUsername) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      console.log(`👋 Unfollowing @${targetUsername}...`);
+
+      await page.goto(`https://twitter.com/${targetUsername}`, { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+      await this.humanDelay(2000, 3000);
+
+      // Click unfollow button
+      const unfollowBtn = await page.$('[data-testid*="unfollow"]');
+      if (!unfollowBtn) {
+        return { success: false, reason: 'not_following' };
+      }
+
+      await unfollowBtn.click();
+      await this.humanDelay(500, 1000);
+
+      // Confirm unfollow
+      const confirmBtn = await page.$('[data-testid="confirmationSheetConfirm"]');
+      if (confirmBtn) {
+        await confirmBtn.click();
+        await this.humanDelay(1000, 2000);
+      }
+
+      console.log(`✅ Successfully unfollowed @${targetUsername}`);
+
+      return { success: true, targetUsername };
+
+    } catch (error) {
+      console.error(`❌ Error unfollowing @${targetUsername}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Check if user followed back
+   */
+  async checkFollowBack(accountId, targetUsername) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      await page.goto(`https://twitter.com/${targetUsername}`, { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+
+      // Check if "Follows you" badge exists
+      const followsYouBadge = await page.$('[data-testid="userFollowIndicator"]');
+      
+      return { 
+        success: true, 
+        followsBack: !!followsYouBadge 
+      };
+
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ============================================
+  // DM ACTIONS
+  // ============================================
+
+  /**
+   * Send a DM
+   */
+  async sendDM(accountId, targetUsername, message, config = {}) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      console.log(`💬 Sending DM to @${targetUsername}...`);
+
+      // Random activity before DM (if configured)
+      if (config.randomActivity?.viewProfile?.enabled) {
+        const shouldView = Math.random() * 100 < config.randomActivity.viewProfile.probability;
+        if (shouldView) {
+          await this.viewProfile(page, targetUsername, config.randomActivity.viewProfile.scrollTime);
+        }
+      }
+
+      if (config.randomActivity?.likeRecentTweet?.enabled) {
+        const shouldLike = Math.random() * 100 < config.randomActivity.likeRecentTweet.probability;
+        if (shouldLike) {
+          await page.goto(`https://twitter.com/${targetUsername}`, { waitUntil: 'networkidle2' });
+          await this.likeRecentTweet(page);
+        }
+      }
+
+      // Navigate to messages
+      await page.goto('https://twitter.com/messages', { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+      await this.humanDelay(2000, 3000);
+
+      // Click "New message"
+      const newMsgBtn = await page.$('[data-testid="NewDM_Button"]');
+      if (newMsgBtn) {
+        await newMsgBtn.click();
+        await this.humanDelay(1000, 2000);
+      }
+
+      // Search for user
+      const searchInput = await page.$('[data-testid="searchPeople"]');
+      if (searchInput) {
+        await this.typeHuman(page, searchInput, targetUsername);
+        await this.humanDelay(1500, 2500);
+
+        // Click on the user
+        const userOption = await page.$('[data-testid="TypeaheadUser"]');
+        if (userOption) {
+          await userOption.click();
+          await this.humanDelay(500, 1000);
+        }
+      }
+
+      // Type message with typing simulation
+      const messageBox = await page.$('[data-testid="dmComposerTextInput"]');
+      if (messageBox) {
+        // Simulate typing delay (based on config)
+        if (config.typingSimulation?.enabled) {
+          const wpm = config.typingSimulation.wordsPerMinute || 60;
+          const wordsInMessage = message.split(' ').length;
+          const typingTime = (wordsInMessage / wpm) * 60 * 1000; // ms
+
+          await this.typeHuman(page, messageBox, message, typingTime / message.length);
+        } else {
+          await this.typeHuman(page, messageBox, message);
+        }
+
+        await this.humanDelay(1000, 2000);
+
+        // Send
+        const sendBtn = await page.$('[data-testid="dmComposerSendButton"]');
+        if (sendBtn) {
+          await sendBtn.click();
+          await this.humanDelay(1000, 2000);
+        }
+      }
+
+      console.log(`✅ DM sent to @${targetUsername}`);
+
+      return { success: true, targetUsername, message };
+
+    } catch (error) {
+      console.error(`❌ Error sending DM to @${targetUsername}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Check for new DMs
+   */
+  async checkNewDMs(accountId) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      await page.goto('https://twitter.com/messages', { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+      await this.humanDelay(2000, 3000);
+
+      // Get conversation list
+      const conversations = await page.$$('[data-testid="conversation"]');
+
+      const newMessages = [];
+
+      for (const conv of conversations.slice(0, 10)) { // Check first 10
+        try {
+          // Check if unread
+          const hasUnread = await conv.$('[data-testid="unreadBadge"]');
+          if (!hasUnread) continue;
+
+          // Click conversation
+          await conv.click();
+          await this.humanDelay(1500, 2500);
+
+          // Get username
+          const usernameEl = await page.$('[data-testid="UserName"]');
+          const username = usernameEl ? await page.evaluate(el => el.textContent, usernameEl) : 'Unknown';
+
+          // Get last message
+          const messages = await page.$$('[data-testid="messageEntry"]');
+          const lastMessage = messages[messages.length - 1];
+          const messageText = lastMessage ? await page.evaluate(el => el.textContent, lastMessage) : '';
+
+          newMessages.push({
+            username: username.replace('@', ''),
+            message: messageText,
+            timestamp: new Date()
+          });
+
+          // Go back to conversation list
+          await page.goBack();
+          await this.humanDelay(1000, 2000);
+
+        } catch (error) {
+          console.error('Error processing conversation:', error.message);
+          continue;
+        }
+      }
+
+      return { success: true, messages: newMessages };
+
+    } catch (error) {
+      console.error('Error checking DMs:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Reply to a DM
+   */
+  async replyToDM(accountId, targetUsername, message, config = {}) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      // Navigate to messages
+      await page.goto('https://twitter.com/messages', { waitUntil: 'networkidle2' });
+      await this.humanDelay(2000, 3000);
+
+      // Find conversation with user
+      const conversations = await page.$$('[data-testid="conversation"]');
+      
+      let foundConversation = false;
+      for (const conv of conversations) {
+        const text = await page.evaluate(el => el.textContent, conv);
+        if (text.includes(targetUsername)) {
+          await conv.click();
+          await this.humanDelay(1500, 2500);
+          foundConversation = true;
+          break;
+        }
+      }
+
+      if (!foundConversation) {
+        throw new Error(`Conversation with @${targetUsername} not found`);
+      }
+
+      // Simulate thinking pause (if configured)
+      if (config.typingSimulation?.pauseForThinking?.enabled) {
+        const shouldPause = Math.random() * 100 < config.typingSimulation.pauseForThinking.probability;
+        if (shouldPause) {
+          const pauseDuration = this.randomBetween(
+            config.typingSimulation.pauseForThinking.duration.min * 1000,
+            config.typingSimulation.pauseForThinking.duration.max * 1000
+          );
+          await this.humanDelay(pauseDuration, pauseDuration);
+        }
+      }
+
+      // Type message
+      const messageBox = await page.$('[data-testid="dmComposerTextInput"]');
+      if (messageBox) {
+        await this.typeHuman(page, messageBox, message);
+        await this.humanDelay(1000, 2000);
+
+        const sendBtn = await page.$('[data-testid="dmComposerSendButton"]');
+        if (sendBtn) {
+          await sendBtn.click();
+        }
+      }
+
+      console.log(`✅ Replied to @${targetUsername}`);
+
+      return { success: true };
+
+    } catch (error) {
+      console.error(`Error replying to @${targetUsername}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ============================================
+  // SCRAPING ACTIONS
+  // ============================================
+
+  /**
+   * Scrape community members
+   */
+  async scrapeCommunityMembers(accountId, communityId, limit = 50) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      console.log(`🔍 Scraping community ${communityId}...`);
+
+      // Navigate to community
+      await page.goto(`https://twitter.com/i/communities/${communityId}`, { 
+        waitUntil: 'networkidle2',
+        timeout: 30000 
+      });
+      await this.humanDelay(3000, 5000);
+
+      // Scroll and collect usernames
+      const usernames = new Set();
+      let scrolls = 0;
+      const maxScrolls = Math.ceil(limit / 10);
+
+      while (usernames.size < limit && scrolls < maxScrolls) {
+        // Get usernames from current view
+        const users = await page.$$eval('[data-testid="User-Name"] a[href^="/"]', links =>
+          links.map(link => link.getAttribute('href').replace('/', ''))
+            .filter(username => !username.includes('/'))
+        );
+
+        users.forEach(u => usernames.add(u));
+
+        // Scroll down
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+        await this.humanDelay(2000, 4000);
+
+        scrolls++;
+      }
+
+      const result = Array.from(usernames).slice(0, limit);
+
+      console.log(`✅ Scraped ${result.length} users from community`);
+
+      return { success: true, usernames: result };
+
+    } catch (error) {
+      console.error('Error scraping community:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Scrape hashtag users
+   */
+  async scrapeHashtagUsers(accountId, hashtag, limit = 50) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      console.log(`🔍 Scraping hashtag #${hashtag}...`);
+
+      const searchQuery = encodeURIComponent(`#${hashtag}`);
+      await page.goto(`https://twitter.com/search?q=${searchQuery}&f=live`, { 
+        waitUntil: 'networkidle2' 
+      });
+      await this.humanDelay(3000, 5000);
+
+      const usernames = new Set();
+      let scrolls = 0;
+      const maxScrolls = Math.ceil(limit / 10);
+
+      while (usernames.size < limit && scrolls < maxScrolls) {
+        const users = await page.$$eval('[data-testid="User-Name"] a[href^="/"]', links =>
+          links.map(link => link.getAttribute('href').replace('/', ''))
+            .filter(username => !username.includes('/'))
+        );
+
+        users.forEach(u => usernames.add(u));
+
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+        await this.humanDelay(2000, 4000);
+
+        scrolls++;
+      }
+
+      const result = Array.from(usernames).slice(0, limit);
+
+      console.log(`✅ Scraped ${result.length} users from #${hashtag}`);
+
+      return { success: true, usernames: result };
+
+    } catch (error) {
+      console.error('Error scraping hashtag:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Scrape followers of an account
+   */
+  async scrapeFollowers(accountId, targetUsername, limit = 50) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      await page.goto(`https://twitter.com/${targetUsername}/followers`, { 
+        waitUntil: 'networkidle2' 
+      });
+      await this.humanDelay(3000, 5000);
+
+      const usernames = new Set();
+      let scrolls = 0;
+      const maxScrolls = Math.ceil(limit / 10);
+
+      while (usernames.size < limit && scrolls < maxScrolls) {
+        const users = await page.$$eval('[data-testid="UserCell"] a[href^="/"]', links =>
+          links.map(link => link.getAttribute('href').replace('/', ''))
+            .filter(username => !username.includes('/'))
+        );
+
+        users.forEach(u => usernames.add(u));
+
+        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+        await this.humanDelay(2000, 4000);
+
+        scrolls++;
+      }
+
+      const result = Array.from(usernames).slice(0, limit);
+
+      return { success: true, usernames: result };
+
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ============================================
+  // ENGAGEMENT ACTIONS
+  // ============================================
+
+  /**
+   * Like a tweet
+   */
+  async like(accountId, tweetUrl) {
+    try {
+      const page = await twitterSessionManager.getPage(accountId);
+
+      await page.goto(tweetUrl, { waitUntil: 'networkidle2' });
+      await this.humanDelay(2000, 3000);
+
+      const likeBtn = await page.$('[data-testid="like"]');
+      if (likeBtn) {
+        await likeBtn.click();
+        await this.humanDelay(500, 1000);
+      }
+
+      return { success: true };
+
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Like recent tweet from profile page
+   */
+  async likeRecentTweet(page) {
+    try {
+      // Find first like button
+      const likeBtn = await page.$('[data-testid="like"]');
+      if (likeBtn) {
+        await likeBtn.click();
+        await this.humanDelay(500, 1000);
+        console.log(`💙 Liked recent tweet`);
+      }
+    } catch (error) {
+      console.log('Could not like recent tweet:', error.message);
+    }
+  }
+
+  // ============================================
+  // RANDOM ACTIVITY
+  // ============================================
+
+  /**
+   * View profile (human-like scrolling)
+   */
+  async viewProfile(page, username, scrollTimeConfig = {}) {
+    try {
+      const scrollTime = this.randomBetween(
+        (scrollTimeConfig.min || 2) * 1000,
+        (scrollTimeConfig.max || 8) * 1000
+      );
+
+      await page.goto(`https://twitter.com/${username}`, { waitUntil: 'networkidle2' });
+      await this.humanDelay(1000, 2000);
+
+      // Scroll slowly
+      const scrolls = Math.floor(scrollTime / 1000);
+      for (let i = 0; i < scrolls; i++) {
+        await page.evaluate(() => window.scrollBy(0, 200 + Math.random() * 200));
+        await this.humanDelay(800, 1500);
+      }
+
+      console.log(`👀 Viewed profile @${username} for ${scrollTime / 1000}s`);
+
+    } catch (error) {
+      console.log('Error viewing profile:', error.message);
+    }
+  }
+
+  /**
+   * Scroll feed
+   */
+  async scrollFeed(page, durationSeconds = 60) {
+    try {
+      await page.goto('https://twitter.com/home', { waitUntil: 'networkidle2' });
+      
+      const scrolls = Math.floor(durationSeconds / 3);
+      for (let i = 0; i < scrolls; i++) {
+        await page.evaluate(() => window.scrollBy(0, 300 + Math.random() * 300));
+        await this.humanDelay(2000, 4000);
+
+        // Randomly stop to "read"
+        if (Math.random() < 0.3) {
+          await this.humanDelay(5000, 10000);
+        }
+      }
+
+      console.log(`📜 Scrolled feed for ${durationSeconds}s`);
+
+    } catch (error) {
+      console.log('Error scrolling feed:', error.message);
+    }
+  }
+
+  // ============================================
+  // HELPER METHODS
+  // ============================================
+
+  async isAccountPrivate(page) {
+    try {
+      const privateIndicator = await page.$('[data-testid="privateAccountIcon"]');
+      return !!privateIndicator;
+    } catch {
+      return false;
+    }
+  }
+
+  async hasProfilePicture(page) {
+    try {
+      const avatar = await page.$('[data-testid="UserAvatar-Container-unknown"]');
+      return !avatar; // If "unknown" avatar exists, they don't have a custom pic
+    } catch {
+      return true;
+    }
+  }
+
+  async typeHuman(page, element, text, delayPerChar = null) {
+    await element.click();
+    await this.humanDelay(100, 300);
+
+    for (const char of text) {
+      const delay = delayPerChar || (Math.floor(Math.random() * 100) + 50);
+      await element.type(char, { delay });
+    }
+  }
+
+  randomBetween(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  async humanDelay(min, max) {
+    const delay = this.randomBetween(min, max);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+}
+
+module.exports = new TwitterAutomationEngine();
+
