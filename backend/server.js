@@ -483,27 +483,26 @@ app.get('/', (req, res) => {
 
 const startServer = async () => {
   try {
+    console.log('🚀 Starting Twitter Automation System...');
+    console.log('   PORT:', PORT);
+    console.log('   NODE_ENV:', process.env.NODE_ENV);
+    console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET (using default)');
+
     // Start server FIRST (so Railway knows app is responding)
-    app.listen(PORT, () => {
-      console.log(`\n🚀 Twitter Automation System`);
-      console.log(`   Server running on port ${PORT}`);
-      console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ HTTP Server listening on port ${PORT}`);
+      console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`   Test endpoint: http://0.0.0.0:${PORT}/test`);
     });
 
     // Then try to connect to MongoDB (non-blocking)
-    connectDB().then(() => {
-      console.log('✅ MongoDB connected successfully');
-    }).catch((err) => {
+    connectDB().catch((err) => {
       console.error('⚠️  MongoDB connection failed, but server is running');
     });
 
-    // Check AdsPower (non-blocking)
-    adsPowerController.checkConnection().then((online) => {
-      if (!online) {
-        console.warn('⚠️  AdsPower is not running. Browser automation will not work.');
-      } else {
-        console.log('✅ AdsPower connected');
-      }
+    // Check AdsPower (non-blocking, don't await)
+    adsPowerController.checkConnection().catch(() => {
+      console.warn('⚠️  AdsPower not available (expected on Railway)');
     });
 
   } catch (error) {
