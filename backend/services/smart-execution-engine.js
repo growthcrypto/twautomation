@@ -5,6 +5,7 @@ const aiChatMonitor = require('./campaigns/ai-chat-monitor');
 const warmupAutomation = require('./campaigns/warmup-automation');
 const randomActivity = require('./campaigns/random-activity');
 const twitterSessionManager = require('./twitter-session-manager');
+const browserSessionManager = require('./browser-session-manager');
 const healthMonitor = require('./health-monitor');
 
 /**
@@ -29,6 +30,9 @@ class SmartExecutionEngine {
 
     console.log('🚀 Starting Smart Execution Engine...');
     this.isRunning = true;
+
+    // Start browser session manager
+    browserSessionManager.start();
 
     // Start health monitor
     healthMonitor.start();
@@ -240,6 +244,9 @@ class SmartExecutionEngine {
 
     // Stop health monitor
     healthMonitor.stop();
+
+    // Stop browser session manager
+    await browserSessionManager.stop();
 
     // Close all sessions
     await twitterSessionManager.closeAllSessions();

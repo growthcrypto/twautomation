@@ -594,18 +594,39 @@ const startServer = async () => {
   }
 };
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
+// Graceful shutdown (SIGINT = Ctrl+C, SIGTERM = Railway restart)
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🛑 Received ${signal}, shutting down gracefully...`);
   
-  healthMonitor.stop();
-  taskScheduler.stop();
-  await adsPowerController.closeAllProfiles();
-  await mongoose.connection.close();
-  
-  console.log('✅ Shutdown complete');
-  process.exit(0);
-});
+  try {
+    const smartEngine = require('./services/smart-execution-engine');
+    const browserSessionManager = require('./services/browser-session-manager');
+    
+    // Stop all automation
+    if (smartEngine.isRunning) {
+      await smartEngine.stop();
+    }
+    
+    healthMonitor.stop();
+    taskScheduler.stop();
+    
+    // Close all browsers
+    await browserSessionManager.stop();
+    await adsPowerController.closeAllProfiles();
+    
+    // Close database
+    await mongoose.connection.close();
+    
+    console.log('✅ Shutdown complete');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // Railway sends this
 
 startServer();
 
