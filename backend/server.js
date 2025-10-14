@@ -43,14 +43,16 @@ app.use(express.static(path.join(__dirname, '../dashboard')));
 
 const connectDB = async () => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/twitter-automation';
-    console.log('🔄 Connecting to MongoDB:', mongoUri.replace(/\/\/.*@/, '//<credentials>@'));
+    // Railway sets MONGO_URL, but we use MONGODB_URI - check both
+    const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/twitter-automation';
+    console.log('🔄 Connecting to MongoDB...');
+    console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+    console.log('   MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
     await mongoose.connect(mongoUri);
-    console.log('✅ MongoDB connected');
+    console.log('✅ MongoDB connected successfully');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
     console.error('⚠️  App will start but database features will not work');
-    console.error('   Please set MONGODB_URI environment variable');
     // Don't exit - let app start anyway
   }
 };
