@@ -69,16 +69,39 @@ function updateSystemStatus() {
     }
 }
 
+// Custom niche toggle
+function toggleCustomNiche(select) {
+    const customDiv = document.getElementById('customNicheDiv');
+    if (select.value === 'custom') {
+        customDiv.classList.remove('hidden');
+    } else {
+        customDiv.classList.add('hidden');
+    }
+}
+window.toggleCustomNiche = toggleCustomNiche;
+
 // Account registration
 document.getElementById('accountForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const formData = new FormData(e.target);
+    let niche = formData.get('niche');
+    
+    // Handle custom niche
+    if (niche === 'custom') {
+        const customNiche = document.getElementById('customNicheInput').value;
+        if (!customNiche) {
+            alert('Please enter a custom niche');
+            return;
+        }
+        niche = customNiche.toLowerCase().trim();
+    }
+    
     const data = {
         username: formData.get('username'),
         adsPowerProfileId: formData.get('adsPowerProfileId'),
         role: formData.get('role'),
-        niche: formData.get('niche'),
+        niche: niche,
         status: 'active'
     };
 

@@ -159,18 +159,30 @@
                                 <option value="">Select role...</option>
                                 <option value="follow">Follow/Unfollow</option>
                                 <option value="massdm">Mass DM</option>
-                                <option value="chat">Chat (AI)</option>
+                                <option value="scraper">Scraper (Collect Leads)</option>
+                                <option value="chat">Chat (AI Conversion)</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Niche</label>
-                            <select name="niche" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            <select name="niche" id="nicheSelect" onchange="toggleCustomNiche(this)" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
                                 <option value="soccer">Soccer</option>
                                 <option value="politics">Politics</option>
                                 <option value="gaming">Gaming</option>
                                 <option value="drama">Drama</option>
+                                <option value="fitness">Fitness</option>
+                                <option value="crypto">Crypto</option>
+                                <option value="dating">Dating/Relationships</option>
+                                <option value="music">Music</option>
+                                <option value="anime">Anime</option>
+                                <option value="food">Food</option>
                                 <option value="general">General</option>
+                                <option value="custom">Custom (Enter Below)</option>
                             </select>
+                        </div>
+                        <div id="customNicheDiv" class="hidden">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Custom Niche</label>
+                            <input type="text" id="customNicheInput" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Enter custom niche">
                         </div>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-medium">
