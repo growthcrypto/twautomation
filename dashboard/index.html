@@ -215,47 +215,41 @@
 
         <!-- Campaigns Tab -->
         <div id="tab-campaigns" class="tab-content hidden">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
                     <h3 class="text-lg font-bold text-white mb-4">
                         <i class="fas fa-user-plus text-blue-400 mr-2"></i>Follow/Unfollow
                     </h3>
                     <p class="text-gray-400 text-sm mb-4">Generate traffic by following users</p>
-                    <button onclick="showCampaignConfig('follow')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium">
+                    <a href="config-follow.html" class="block w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium text-center">
                         Configure
-                    </button>
+                    </a>
                 </div>
                 <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
                     <h3 class="text-lg font-bold text-white mb-4">
                         <i class="fas fa-envelope text-green-400 mr-2"></i>Mass DM
                     </h3>
                     <p class="text-gray-400 text-sm mb-4">Send DMs to route traffic</p>
-                    <button onclick="showCampaignConfig('dm')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium">
+                    <a href="config-dm.html" class="block w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium text-center">
                         Configure
-                    </button>
+                    </a>
                 </div>
                 <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
                     <h3 class="text-lg font-bold text-white mb-4">
                         <i class="fas fa-robot text-purple-400 mr-2"></i>AI Chat
                     </h3>
                     <p class="text-gray-400 text-sm mb-4">Convert leads with AI</p>
-                    <button onclick="showCampaignConfig('chat')" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-medium">
+                    <a href="config-chat.html" class="block w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-medium text-center">
                         Configure
-                    </button>
+                    </a>
                 </div>
-            </div>
-
-            <!-- Campaign Config Modal -->
-            <div id="campaignConfigModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-                <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-bold text-white" id="configModalTitle">Campaign Config</h3>
-                        <button onclick="closeCampaignConfig()" class="text-gray-400 hover:text-white">
-                            <i class="fas fa-times text-xl"></i>
-                        </button>
-                    </div>
-                    <div id="configModalContent">
-                        <!-- Populated by JS -->
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-search text-yellow-400 mr-2"></i>Lead Scraper
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Collect quality leads from communities</p>
+                    <div class="bg-yellow-900/20 border border-yellow-600/50 rounded px-3 py-2 text-yellow-300 text-xs">
+                        Coming Soon
                     </div>
                 </div>
             </div>

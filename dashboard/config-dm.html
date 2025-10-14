@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mass DM Config</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-5xl mx-auto">
+        <div class="mb-6">
+            <a href="index.html" class="text-blue-400 hover:text-blue-300">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+            </a>
+        </div>
+
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-8">
+            <h1 class="text-3xl font-bold text-white mb-2">
+                <i class="fas fa-envelope text-green-400 mr-3"></i>Mass DM Campaign Configuration
+            </h1>
+            <p class="text-gray-400 mb-8">Configure automated DM sending for lead routing</p>
+
+            <form id="dmConfigForm" class="space-y-8">
+                
+                <!-- Basic Settings -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Basic Settings</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Campaign Name *</label>
+                            <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white" placeholder="Soccer Mass DM Campaign">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max DMs Per Day</label>
+                            <input type="number" name="maxDMsPerDay" value="50" min="1" max="500" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            <p class="text-xs text-gray-500 mt-1">Twitter allows 500, recommend 30-50</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Status</label>
+                            <select name="enabled" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                                <option value="true">Enabled</option>
+                                <option value="false">Disabled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timing Controls -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Timing Controls</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Delay Between DMs (Min Seconds)</label>
+                            <input type="number" name="delayMin" value="60" min="10" max="600" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Delay Between DMs (Max Seconds)</label>
+                            <input type="number" name="delayMax" value="180" min="30" max="900" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Break System -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Break System</h3>
+                    <div class="space-y-4">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="breaksEnabled" checked class="w-5 h-5">
+                            <span class="text-gray-300">Enable automatic breaks</span>
+                        </label>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Take Break After X DMs</label>
+                                <input type="number" name="breakAfterActions" value="10" min="3" max="50" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Break Min (Minutes)</label>
+                                <input type="number" name="breakDurationMin" value="10" min="1" max="60" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Break Max (Minutes)</label>
+                                <input type="number" name="breakDurationMax" value="30" min="5" max="120" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Templates (A/B Testing) -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Message Templates (A/B Testing)</h3>
+                    <p class="text-gray-400 text-sm mb-4">Add multiple templates - system will test which converts best</p>
+                    <div id="messageTemplates" class="space-y-3">
+                        <div class="template-row">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Template 1</label>
+                            <textarea name="template[]" rows="3" placeholder="Hey! Your take on {topic} is wild 😂 My main is @{chat_account} - way more active there!" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white mb-2"></textarea>
+                            <div class="flex gap-2 items-center">
+                                <label class="text-sm text-gray-400">Weight (%)</label>
+                                <input type="number" name="templateWeight[]" value="50" min="1" max="100" class="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addTemplate()" class="mt-3 text-green-400 hover:text-green-300 text-sm">
+                        <i class="fas fa-plus mr-2"></i>Add Another Template
+                    </button>
+                    <p class="text-xs text-gray-500 mt-3">Variables: {topic}, {chat_account}, {name}</p>
+                </div>
+
+                <!-- Personalization -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Personalization</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="extractTopicFromBio" checked class="w-5 h-5">
+                            <span class="text-gray-300">Extract topic from user's bio</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="extractTopicFromTweets" checked class="w-5 h-5">
+                            <span class="text-gray-300">Extract topic from recent tweets</span>
+                        </label>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max Tweets To Analyze</label>
+                            <input type="number" name="maxTweetsToAnalyze" value="3" min="1" max="10" class="w-32 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Random Activity -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Random Activity</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="flex items-center gap-3 mb-2">
+                                <input type="checkbox" name="viewProfileBeforeDM" checked class="w-5 h-5">
+                                <span class="text-gray-300">View profile before sending DM</span>
+                            </label>
+                            <div class="ml-8">
+                                <label class="text-xs text-gray-400">Probability (%)</label>
+                                <input type="number" name="viewProfileProbability" value="80" min="0" max="100" class="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-3 mb-2">
+                                <input type="checkbox" name="likeBeforeDM" class="w-5 h-5">
+                                <span class="text-gray-300">Like recent tweet before DM</span>
+                            </label>
+                            <div class="ml-8">
+                                <label class="text-xs text-gray-400">Probability (%)</label>
+                                <input type="number" name="likeProbability" value="40" min="0" max="100" class="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Filters</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="skipIfAlreadyContacted" checked class="w-5 h-5">
+                            <span class="text-gray-300">Skip if already contacted</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="skipIfPrivate" checked class="w-5 h-5">
+                            <span class="text-gray-300">Skip private accounts</span>
+                        </label>
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="skipIfBotAccount" checked class="w-5 h-5">
+                            <span class="text-gray-300">Skip suspected bots</span>
+                        </label>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Min Account Age (days)</label>
+                            <input type="number" name="minAccountAge" value="30" min="0" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apply To Accounts -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Apply To Accounts</h3>
+                    <div id="accountsList" class="space-y-2">
+                        <p class="text-gray-500 text-sm">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-4 rounded-lg font-bold text-lg">
+                        <i class="fas fa-save mr-2"></i>Save Configuration
+                    </button>
+                    <a href="index.html" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-4 rounded-lg font-bold text-lg text-center">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin + '/api';
+
+        function addTemplate() {
+            const container = document.getElementById('messageTemplates');
+            const templateNum = container.children.length + 1;
+            const newTemplate = document.createElement('div');
+            newTemplate.className = 'template-row border-t border-gray-700 pt-3';
+            newTemplate.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-medium text-gray-300">Template ${templateNum}</label>
+                    <button type="button" onclick="this.closest('.template-row').remove()" class="text-red-400 hover:text-red-300 text-sm">
+                        <i class="fas fa-trash"></i> Remove
+                    </button>
+                </div>
+                <textarea name="template[]" rows="3" placeholder="Different message template..." class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white mb-2"></textarea>
+                <div class="flex gap-2 items-center">
+                    <label class="text-sm text-gray-400">Weight (%)</label>
+                    <input type="number" name="templateWeight[]" value="50" min="1" max="100" class="w-24 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm">
+                </div>
+            `;
+            container.appendChild(newTemplate);
+        }
+
+        async function loadAccounts() {
+            try {
+                const response = await fetch(`${API_URL}/accounts`);
+                const data = await response.json();
+
+                const container = document.getElementById('accountsList');
+                
+                const dmAccounts = data.accounts?.filter(a => a.role === 'massdm') || [];
+
+                if (dmAccounts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">No Mass DM accounts registered yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = dmAccounts.map(acc => `
+                    <label class="flex items-center gap-3 p-3 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                        <input type="checkbox" name="accountIds[]" value="${acc._id}" class="w-5 h-5">
+                        <div class="flex-1">
+                            <div class="text-white font-medium">@${acc.username}</div>
+                            <div class="text-gray-400 text-xs">${acc.niche || 'general'} | ${acc.status}</div>
+                        </div>
+                    </label>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        document.getElementById('dmConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            
+            const messageTemplates = [];
+            const templates = formData.getAll('template[]');
+            const weights = formData.getAll('templateWeight[]');
+
+            for (let i = 0; i < templates.length; i++) {
+                if (templates[i].trim()) {
+                    messageTemplates.push({
+                        template: templates[i],
+                        variables: ['topic', 'chat_account', 'name'],
+                        weight: parseInt(weights[i])
+                    });
+                }
+            }
+
+            const config = {
+                name: formData.get('name'),
+                enabled: formData.get('enabled') === 'true',
+                maxDMsPerDay: parseInt(formData.get('maxDMsPerDay')),
+                delayBetweenDMs: {
+                    min: parseInt(formData.get('delayMin')),
+                    max: parseInt(formData.get('delayMax'))
+                },
+                breaks: {
+                    enabled: formData.get('breaksEnabled') === 'on',
+                    afterActions: parseInt(formData.get('breakAfterActions')),
+                    breakDuration: {
+                        min: parseInt(formData.get('breakDurationMin')) * 60,
+                        max: parseInt(formData.get('breakDurationMax')) * 60
+                    }
+                },
+                messageTemplates,
+                personalization: {
+                    extractTopicFromBio: formData.get('extractTopicFromBio') === 'on',
+                    extractTopicFromRecentTweets: formData.get('extractTopicFromTweets') === 'on',
+                    maxTweetsToAnalyze: parseInt(formData.get('maxTweetsToAnalyze'))
+                },
+                randomActivity: {
+                    viewProfile: {
+                        enabled: formData.get('viewProfileBeforeDM') === 'on',
+                        probability: parseInt(formData.get('viewProfileProbability'))
+                    },
+                    likeRecentTweet: {
+                        enabled: formData.get('likeBeforeDM') === 'on',
+                        probability: parseInt(formData.get('likeProbability'))
+                    }
+                },
+                skipIfAlreadyContacted: formData.get('skipIfAlreadyContacted') === 'on',
+                skipIfPrivate: formData.get('skipIfPrivate') === 'on',
+                skipIfBotAccount: formData.get('skipIfBotAccount') === 'on',
+                minAccountAge: parseInt(formData.get('minAccountAge')),
+                accountIds: formData.getAll('accountIds[]')
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/configs/mass-dm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Mass DM configuration saved!');
+                    window.location.href = 'index.html';
+                } else {
+                    alert('❌ Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Config</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-5xl mx-auto">
+        <div class="mb-6">
+            <a href="index.html" class="text-blue-400 hover:text-blue-300">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+            </a>
+        </div>
+
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-8">
+            <h1 class="text-3xl font-bold text-white mb-2">
+                <i class="fas fa-robot text-purple-400 mr-3"></i>AI Chat Configuration
+            </h1>
+            <p class="text-gray-400 mb-8">Configure AI-powered conversations and OF conversion</p>
+
+            <form id="chatConfigForm" class="space-y-8">
+                
+                <!-- Basic Settings -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Basic Settings</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Campaign Name *</label>
+                            <input type="text" name="name" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white" placeholder="Soccer AI Chat">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max Conversations Per Day</label>
+                            <input type="number" name="maxConversationsPerDay" value="50" min="1" max="200" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max Messages Per Conversation</label>
+                            <input type="number" name="maxMessagesPerConversation" value="30" min="5" max="100" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Provider -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">AI Provider</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">API URL *</label>
+                            <input type="url" name="aiApiUrl" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white" placeholder="https://api.openai.com/v1/chat/completions">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">API Key *</label>
+                            <input type="text" name="aiApiKey" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white" placeholder="sk-...">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Model</label>
+                            <input type="text" name="aiModel" value="gpt-4" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation Strategy -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Conversation Strategy</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Messages Before Sending OF Link</label>
+                            <input type="number" name="messagesBeforeLink" value="12" min="3" max="50" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            <p class="text-xs text-gray-500 mt-1">Build rapport first, then send link</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max Messages Total</label>
+                            <input type="number" name="maxMessagesTotal" value="25" min="10" max="100" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Personality -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">AI Personality</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Custom Instructions *</label>
+                            <textarea name="personality" rows="6" required class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white" placeholder="You're a soccer-obsessed girl who loves debating. Argue passionately about Messi vs Ronaldo. Be flirty but not too eager. After 12 messages, mention your OnlyFans naturally."></textarea>
+                            <p class="text-xs text-gray-500 mt-1">Tell the AI how to behave, what personality to have, conversation style</p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Style</label>
+                                <select name="style" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                                    <option value="flirty_argumentative">Flirty & Argumentative</option>
+                                    <option value="friendly">Friendly</option>
+                                    <option value="playful">Playful</option>
+                                    <option value="sarcastic">Sarcastic</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Tone</label>
+                                <select name="tone" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                                    <option value="playful">Playful</option>
+                                    <option value="serious">Serious</option>
+                                    <option value="casual">Casual</option>
+                                    <option value="professional">Professional</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Response Timing -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Response Timing</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Min Response Delay (Seconds)</label>
+                            <input type="number" name="responseDelayMin" value="10" min="1" max="600" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max Response Delay (Seconds)</label>
+                            <input type="number" name="responseDelayMax" value="300" min="10" max="1800" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            <p class="text-xs text-gray-500 mt-1">Don't reply instantly - seems fake</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Typing Simulation -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Typing Simulation</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="typingSimEnabled" checked class="w-5 h-5">
+                            <span class="text-gray-300">Enable typing simulation (looks human)</span>
+                        </label>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Words Per Minute</label>
+                            <input type="number" name="wordsPerMinute" value="60" min="20" max="120" class="w-32 bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            <p class="text-xs text-gray-500 mt-1">Average typing speed (60 is normal)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OF Link Message -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">OnlyFans Link Message</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Link Message Template</label>
+                        <textarea name="ofLinkTemplate" rows="3" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white" placeholder="Alright you got some good points 😂 Want to see more of me? Check my OF 👇&#10;{of_link}"></textarea>
+                        <p class="text-xs text-gray-500 mt-1">Use {of_link} as placeholder for OnlyFans URL</p>
+                    </div>
+                </div>
+
+                <!-- Follow-Up System -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Follow-Up System</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3">
+                            <input type="checkbox" name="followUpEnabled" checked class="w-5 h-5">
+                            <span class="text-gray-300">Send follow-up if no response after link</span>
+                        </label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Wait Hours Before Follow-Up</label>
+                                <input type="number" name="followUpAfterHours" value="24" min="1" max="168" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Max Follow-Ups</label>
+                                <input type="number" name="maxFollowUps" value="2" min="1" max="5" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apply To Accounts -->
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">Apply To Accounts</h3>
+                    <div id="accountsList" class="space-y-2">
+                        <p class="text-gray-500 text-sm">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-4 rounded-lg font-bold text-lg">
+                        <i class="fas fa-save mr-2"></i>Save Configuration
+                    </button>
+                    <a href="index.html" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-4 rounded-lg font-bold text-lg text-center">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin + '/api';
+
+        async function loadAccounts() {
+            try {
+                const response = await fetch(`${API_URL}/accounts`);
+                const data = await response.json();
+
+                const container = document.getElementById('accountsList');
+                
+                const chatAccounts = data.accounts?.filter(a => a.role === 'chat') || [];
+
+                if (chatAccounts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">No Chat accounts registered yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = chatAccounts.map(acc => `
+                    <label class="flex items-center gap-3 p-3 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                        <input type="checkbox" name="accountIds[]" value="${acc._id}" class="w-5 h-5">
+                        <div class="flex-1">
+                            <div class="text-white font-medium">@${acc.username}</div>
+                            <div class="text-gray-400 text-xs">${acc.niche || 'general'} | ${acc.status}</div>
+                        </div>
+                    </label>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+            }
+        }
+
+        document.getElementById('chatConfigForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            
+            const config = {
+                name: formData.get('name'),
+                enabled: true,
+                aiProvider: {
+                    type: 'custom_api',
+                    apiUrl: formData.get('aiApiUrl'),
+                    apiKey: formData.get('aiApiKey'),
+                    model: formData.get('aiModel')
+                },
+                responseDelay: {
+                    min: parseInt(formData.get('responseDelayMin')),
+                    max: parseInt(formData.get('responseDelayMax'))
+                },
+                maxConversationsPerDay: parseInt(formData.get('maxConversationsPerDay')),
+                maxMessagesPerConversation: parseInt(formData.get('maxMessagesPerConversation')),
+                strategy: {
+                    messagesToEngageBefore: parseInt(formData.get('messagesBeforeLink')),
+                    messagesToEngageAfter: parseInt(formData.get('maxMessagesTotal')),
+                    sendLinkTriggers: [
+                        { type: 'message_count', value: parseInt(formData.get('messagesBeforeLink')) }
+                    ]
+                },
+                personality: {
+                    style: formData.get('style'),
+                    tone: formData.get('tone'),
+                    customInstructions: formData.get('personality')
+                },
+                typingSimulation: {
+                    enabled: formData.get('typingSimEnabled') === 'on',
+                    wordsPerMinute: parseInt(formData.get('wordsPerMinute'))
+                },
+                ofLinkMessage: {
+                    templates: [formData.get('ofLinkTemplate') || "Check my OF 👇\n{of_link}"],
+                    randomize: false
+                },
+                followUp: {
+                    enabled: formData.get('followUpEnabled') === 'on',
+                    afterHours: parseInt(formData.get('followUpAfterHours')),
+                    maxFollowUps: parseInt(formData.get('maxFollowUps'))
+                },
+                accountIds: formData.getAll('accountIds[]')
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/configs/ai-chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ AI Chat configuration saved!');
+                    window.location.href = 'index.html';
+                } else {
+                    alert('❌ Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAccounts();
+        });
+    </script>
+</body>
+</html>
+
