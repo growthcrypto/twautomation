@@ -1,351 +1,374 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = window.location.origin + '/api';
+let systemRunning = false;
 
-// Auto-refresh dashboard every 30 seconds
-let autoRefreshInterval;
+// Tab switching
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    
+    // Show selected tab
+    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+    
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-tab') === tabName) {
+            btn.classList.remove('bg-gray-800', 'text-gray-300');
+            btn.classList.add('bg-blue-600', 'text-white');
+        } else {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-gray-800', 'text-gray-300');
+        }
+    });
 
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', () => {
-    refreshDashboard();
-    startAutoRefresh();
+    // Load data for this tab
+    if (tabName === 'accounts') loadAccounts();
+    if (tabName === 'leads') loadLeads();
+    if (tabName === 'dashboard') loadDashboard();
+}
+
+// System control
+async function toggleSystem() {
+    const btn = document.getElementById('systemToggle');
+    
+    try {
+        const endpoint = systemRunning ? '/system/stop' : '/system/start';
+        const response = await fetch(`${API_URL}${endpoint}`, { method: 'POST' });
+        const data = await response.json();
+
+        if (data.success) {
+            systemRunning = !systemRunning;
+            updateSystemStatus();
+            alert(systemRunning ? '✅ System started!' : '🛑 System stopped');
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+function updateSystemStatus() {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    const btn = document.getElementById('systemToggle');
+
+    if (systemRunning) {
+        dot.classList.remove('bg-gray-500');
+        dot.classList.add('bg-green-500');
+        text.textContent = 'Running';
+        btn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop System';
+        btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        btn.classList.add('bg-red-600', 'hover:bg-red-700');
+    } else {
+        dot.classList.remove('bg-green-500');
+        dot.classList.add('bg-gray-500');
+        text.textContent = 'Offline';
+        btn.innerHTML = '<i class="fas fa-play mr-2"></i>Start System';
+        btn.classList.remove('bg-red-600', 'hover:bg-red-700');
+        btn.classList.add('bg-green-600', 'hover:bg-green-700');
+    }
+}
+
+// Account registration
+document.getElementById('accountForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = {
+        username: formData.get('username'),
+        password: formData.get('password'),
+        role: formData.get('role'),
+        niche: formData.get('niche'),
+        status: 'active'
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/accounts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success || response.ok) {
+            alert('✅ Account registered!');
+            e.target.reset();
+            loadAccounts();
+        } else {
+            alert('❌ Error: ' + (result.error || 'Failed to register account'));
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
 });
 
-function startAutoRefresh() {
-    autoRefreshInterval = setInterval(() => {
-        refreshDashboard();
-    }, 30000); // 30 seconds
-}
-
-function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-    }
-}
-
-async function refreshDashboard() {
-    try {
-        await Promise.all([
-            loadSystemStatus(),
-            loadDashboardMetrics(),
-            loadAccounts(),
-            loadLeads(),
-            loadTaskStats()
-        ]);
-    } catch (error) {
-        console.error('Error refreshing dashboard:', error);
-    }
-}
-
-async function loadSystemStatus() {
-    try {
-        const response = await fetch(`${API_URL}/system/status`);
-        const data = await response.json();
-
-        if (data.success) {
-            const status = data.status;
-            
-            // Update status indicators
-            updateStatusDot('status-database', status.database);
-            updateStatusDot('status-adspower', status.adsPower);
-            updateStatusDot('status-health', status.healthMonitor);
-            updateStatusDot('status-scheduler', status.taskScheduler);
-        }
-    } catch (error) {
-        console.error('Error loading system status:', error);
-    }
-}
-
-function updateStatusDot(elementId, isActive) {
-    const element = document.getElementById(elementId);
-    if (element) {
-        element.className = `status-dot ${isActive ? 'status-active' : 'status-offline'}`;
-    }
-}
-
-async function loadDashboardMetrics() {
-    try {
-        const response = await fetch(`${API_URL}/analytics/dashboard`);
-        const data = await response.json();
-
-        if (data.success) {
-            const d = data.dashboard;
-
-            // Accounts
-            document.getElementById('metric-total-accounts').textContent = d.accounts.total;
-            document.getElementById('metric-active-accounts').textContent = d.accounts.active;
-
-            // Today's activity
-            document.getElementById('metric-today-follows').textContent = d.today.follows;
-            document.getElementById('metric-today-follows-detail').textContent = d.today.follows;
-            document.getElementById('metric-today-dms').textContent = d.today.dms;
-
-            // Leads
-            document.getElementById('metric-leads-active').textContent = d.leads.inConversation;
-            document.getElementById('metric-leads-new').textContent = d.leads.new;
-            document.getElementById('metric-leads-link-sent').textContent = d.leads.linkSent;
-
-            // Conversions & Revenue
-            document.getElementById('metric-conversions').textContent = d.leads.converted;
-            document.getElementById('metric-revenue').textContent = d.revenue.total.toFixed(2);
-
-            // Pipeline
-            document.getElementById('pipeline-new').textContent = d.leads.new;
-            document.getElementById('pipeline-conversation').textContent = d.leads.inConversation;
-            document.getElementById('pipeline-link-sent').textContent = d.leads.linkSent;
-            document.getElementById('pipeline-converted').textContent = d.leads.converted;
-
-            // Tasks
-            document.getElementById('tasks-pending').textContent = d.tasks.pending;
-            document.getElementById('tasks-failed').textContent = d.tasks.failedToday;
-        }
-    } catch (error) {
-        console.error('Error loading dashboard metrics:', error);
-    }
-}
-
+// Load accounts
 async function loadAccounts() {
     try {
         const response = await fetch(`${API_URL}/accounts`);
         const data = await response.json();
 
-        if (data.success) {
-            const tbody = document.getElementById('accounts-table-body');
-            tbody.innerHTML = '';
-
-            data.accounts.forEach(account => {
-                const row = document.createElement('tr');
-                row.className = 'border-b border-white/10 hover:bg-white/5';
-                row.innerHTML = `
-                    <td class="py-3 px-4">
-                        <div class="font-semibold">${account.username}</div>
-                        <div class="text-xs text-gray-400">${account.email || 'N/A'}</div>
-                    </td>
-                    <td class="py-3 px-4">
-                        <span class="px-2 py-1 rounded text-xs ${
-                            account.role === 'traffic' ? 'bg-blue-500/20 text-blue-300' : 'bg-purple-500/20 text-purple-300'
-                        }">
-                            ${account.role.toUpperCase()}
-                        </span>
-                    </td>
-                    <td class="py-3 px-4">
-                        <span class="px-2 py-1 rounded text-xs bg-gray-500/20 text-gray-300">
-                            ${account.niche || 'general'}
-                        </span>
-                    </td>
-                    <td class="py-3 px-4">
-                        ${getStatusBadge(account.status)}
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="text-sm">
-                            Follows: ${account.today.follows || 0} | 
-                            DMs: ${account.today.dms || 0}
-                        </div>
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="text-sm">
-                            ${account.role === 'traffic' ? 
-                                `Leads: ${account.totalLeadsGenerated || 0}` : 
-                                `Conversions: ${account.totalConversions || 0}`
-                            }
-                        </div>
-                        <div class="text-xs text-gray-400">
-                            Health: ${(account.health?.actionSuccessRate || 100).toFixed(0)}%
-                        </div>
-                    </td>
-                    <td class="py-3 px-4">
-                        <button onclick="viewAccount('${account._id}')" class="text-blue-400 hover:text-blue-300 mr-2">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button onclick="deleteAccount('${account._id}')" class="text-red-400 hover:text-red-300">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
+        const tbody = document.getElementById('accountsTableBody');
+        
+        if (!data.accounts || data.accounts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">No accounts registered</td></tr>';
+            return;
         }
+
+        tbody.innerHTML = data.accounts.map(acc => `
+            <tr class="border-b border-gray-800">
+                <td class="py-3">@${acc.username}</td>
+                <td class="py-3">
+                    <span class="px-2 py-1 text-xs rounded ${acc.role === 'traffic' ? 'bg-blue-900 text-blue-300' : 'bg-purple-900 text-purple-300'}">
+                        ${acc.role}
+                    </span>
+                </td>
+                <td class="py-3">${acc.niche || 'general'}</td>
+                <td class="py-3">
+                    <span class="px-2 py-1 text-xs rounded ${getStatusColor(acc.status)}">
+                        ${acc.status}
+                    </span>
+                </td>
+                <td class="py-3">
+                    <button onclick="deleteAccount('${acc._id}')" class="text-red-400 hover:text-red-300">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
     } catch (error) {
         console.error('Error loading accounts:', error);
     }
 }
 
-function getStatusBadge(status) {
+function getStatusColor(status) {
     const colors = {
-        active: 'bg-green-500/20 text-green-300',
-        warming_up: 'bg-yellow-500/20 text-yellow-300',
-        rate_limited: 'bg-orange-500/20 text-orange-300',
-        shadowbanned: 'bg-red-500/20 text-red-300',
-        banned: 'bg-red-600/20 text-red-400',
-        archived: 'bg-gray-500/20 text-gray-400'
+        active: 'bg-green-900 text-green-300',
+        warming_up: 'bg-yellow-900 text-yellow-300',
+        banned: 'bg-red-900 text-red-300'
     };
-
-    const color = colors[status] || colors.archived;
-
-    return `<span class="px-2 py-1 rounded text-xs ${color}">${status.toUpperCase().replace('_', ' ')}</span>`;
+    return colors[status] || 'bg-gray-800 text-gray-400';
 }
 
-async function loadLeads() {
-    try {
-        const response = await fetch(`${API_URL}/leads?limit=50`);
-        const data = await response.json();
-
-        if (data.success) {
-            const tbody = document.getElementById('leads-table-body');
-            tbody.innerHTML = '';
-
-            // Count statuses for pipeline
-            const statusCounts = {
-                new_lead: 0,
-                dm_sent: 0,
-                in_conversation: 0,
-                link_sent: 0,
-                converted: 0
-            };
-
-            data.leads.forEach(lead => {
-                statusCounts[lead.status] = (statusCounts[lead.status] || 0) + 1;
-
-                const row = document.createElement('tr');
-                row.className = 'border-b border-white/10 hover:bg-white/5';
-                row.innerHTML = `
-                    <td class="py-3 px-4">
-                        <div class="font-semibold">@${lead.username}</div>
-                        <div class="text-xs text-gray-400">${lead.niche || 'general'}</div>
-                    </td>
-                    <td class="py-3 px-4">
-                        ${getLeadStatusBadge(lead.status)}
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="text-sm">${lead.sourceAccount?.username || 'N/A'}</div>
-                        <div class="text-xs text-gray-400">${lead.sourceAccount?.role || ''}</div>
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="text-sm">${lead.chatAccount?.username || 'N/A'}</div>
-                    </td>
-                    <td class="py-3 px-4">
-                        ${lead.messageCount || 0}
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="text-xs">${formatDate(lead.lastInteractionDate || lead.createdAt)}</div>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            // Update pipeline counts
-            document.getElementById('pipeline-dm-sent').textContent = statusCounts.dm_sent || 0;
-        }
-    } catch (error) {
-        console.error('Error loading leads:', error);
-    }
-}
-
-function getLeadStatusBadge(status) {
-    const colors = {
-        new_lead: 'bg-blue-500/20 text-blue-300',
-        dm_sent: 'bg-indigo-500/20 text-indigo-300',
-        in_conversation: 'bg-purple-500/20 text-purple-300',
-        link_sent: 'bg-yellow-500/20 text-yellow-300',
-        converted: 'bg-green-500/20 text-green-300',
-        ghosted: 'bg-gray-500/20 text-gray-400',
-        not_interested: 'bg-red-500/20 text-red-400'
-    };
-
-    const color = colors[status] || 'bg-gray-500/20 text-gray-400';
-
-    return `<span class="px-2 py-1 rounded text-xs ${color}">${status.toUpperCase().replace('_', ' ')}</span>`;
-}
-
-async function loadTaskStats() {
-    try {
-        const response = await fetch(`${API_URL}/tasks?status=pending`);
-        const data = await response.json();
-
-        if (data.success) {
-            // These are already loaded in loadDashboardMetrics
-            // This is just for task-specific views if needed
-        }
-    } catch (error) {
-        console.error('Error loading task stats:', error);
-    }
-}
-
-function formatDate(dateString) {
-    if (!dateString) return 'Never';
+async function deleteAccount(id) {
+    if (!confirm('Delete this account?')) return;
     
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    return date.toLocaleDateString();
-}
-
-async function startSystem() {
     try {
-        const response = await fetch(`${API_URL}/system/start`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-            alert('✅ System started successfully!');
-            refreshDashboard();
-        } else {
-            alert('❌ Failed to start system: ' + data.error);
-        }
-    } catch (error) {
-        alert('❌ Error starting system: ' + error.message);
-    }
-}
-
-async function stopSystem() {
-    try {
-        const response = await fetch(`${API_URL}/system/stop`, { method: 'POST' });
-        const data = await response.json();
-
-        if (data.success) {
-            alert('🛑 System stopped');
-            refreshDashboard();
-        } else {
-            alert('❌ Failed to stop system: ' + data.error);
-        }
-    } catch (error) {
-        alert('❌ Error stopping system: ' + error.message);
-    }
-}
-
-function showCreateAccountModal() {
-    alert('Account creation UI coming soon! For now, use the API: POST /api/accounts');
-}
-
-function viewAccount(accountId) {
-    window.location.href = `/account.html?id=${accountId}`;
-}
-
-async function deleteAccount(accountId) {
-    if (!confirm('Are you sure you want to archive this account?')) {
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/accounts/${accountId}`, { 
-            method: 'DELETE' 
-        });
-        const data = await response.json();
-
-        if (data.success) {
-            alert('✅ Account archived');
-            loadAccounts();
-        } else {
-            alert('❌ Failed to archive account: ' + data.error);
-        }
+        await fetch(`${API_URL}/accounts/${id}`, { method: 'DELETE' });
+        alert('✅ Account deleted');
+        loadAccounts();
     } catch (error) {
         alert('❌ Error: ' + error.message);
     }
 }
 
+// Load dashboard metrics
+async function loadDashboard() {
+    try {
+        const response = await fetch(`${API_URL}/analytics/dashboard`);
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('metric-total').textContent = data.dashboard.accounts.total;
+            document.getElementById('metric-active').textContent = data.dashboard.accounts.active;
+            document.getElementById('metric-follows').textContent = data.dashboard.today.follows;
+            document.getElementById('metric-leads').textContent = data.dashboard.leads.inConversation;
+            document.getElementById('metric-conversions').textContent = data.dashboard.leads.converted;
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+// Load leads
+async function loadLeads() {
+    try {
+        const response = await fetch(`${API_URL}/leads`);
+        const data = await response.json();
+
+        const tbody = document.getElementById('leadsTableBody');
+        
+        if (!data.leads || data.leads.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">No leads yet</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.leads.slice(0, 50).map(lead => `
+            <tr class="border-b border-gray-800">
+                <td class="py-3">@${lead.username}</td>
+                <td class="py-3">
+                    <span class="px-2 py-1 text-xs rounded bg-gray-800">
+                        ${lead.status.replace('_', ' ')}
+                    </span>
+                </td>
+                <td class="py-3">${lead.sourceAccount?.username || 'N/A'}</td>
+                <td class="py-3">${lead.messageCount || 0}</td>
+                <td class="py-3">${formatDate(lead.lastInteractionDate)}</td>
+            </tr>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading leads:', error);
+    }
+}
+
+function formatDate(date) {
+    if (!date) return 'Never';
+    const d = new Date(date);
+    const now = new Date();
+    const diff = now - d;
+    const hours = Math.floor(diff / 3600000);
+    if (hours < 1) return 'Just now';
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+
+// Campaign config modals
+function showCampaignConfig(type) {
+    const modal = document.getElementById('campaignConfigModal');
+    const title = document.getElementById('configModalTitle');
+    const content = document.getElementById('configModalContent');
+
+    const configs = {
+        follow: {
+            title: 'Follow/Unfollow Campaign',
+            html: `
+                <form id="followConfigForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                        <input type="text" name="name" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Soccer Follow Campaign">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Max Follows/Day</label>
+                            <input type="number" name="maxFollows" value="100" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Delay (seconds)</label>
+                            <input type="number" name="delay" value="60" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-medium">
+                        Save Config
+                    </button>
+                </form>
+            `
+        },
+        dm: {
+            title: 'Mass DM Campaign',
+            html: `
+                <form id="dmConfigForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                        <input type="text" name="name" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Message Template</label>
+                        <textarea name="template" rows="3" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Hey! Check out my main @{chat_account}"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-medium">
+                        Save Config
+                    </button>
+                </form>
+            `
+        },
+        chat: {
+            title: 'AI Chat Config',
+            html: `
+                <form id="chatConfigForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                        <input type="text" name="name" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Messages Before OF Link</label>
+                        <input type="number" name="messagesBeforeLink" value="12" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                    </div>
+                    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded font-medium">
+                        Save Config
+                    </button>
+                </form>
+            `
+        }
+    };
+
+    title.textContent = configs[type].title;
+    content.innerHTML = configs[type].html;
+    modal.classList.remove('hidden');
+}
+
+function closeCampaignConfig() {
+    document.getElementById('campaignConfigModal').classList.add('hidden');
+}
+
+// Proxy form
+document.getElementById('proxyForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = {
+        type: 'mobile',
+        host: formData.get('host'),
+        port: parseInt(formData.get('port')),
+        username: formData.get('username'),
+        password: formData.get('password'),
+        status: 'active'
+    };
+
+    try {
+        const response = await fetch(`${API_URL}/proxies`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert('✅ Proxy added!');
+            e.target.reset();
+            loadProxies();
+        } else {
+            alert('❌ Failed to add proxy');
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+});
+
+async function loadProxies() {
+    try {
+        const response = await fetch(`${API_URL}/proxies`);
+        const data = await response.json();
+
+        const list = document.getElementById('proxiesList');
+        
+        if (!data.proxies || data.proxies.length === 0) {
+            list.innerHTML = '<p class="text-gray-400 text-sm">No proxies added yet</p>';
+            return;
+        }
+
+        list.innerHTML = data.proxies.map(p => `
+            <div class="flex justify-between items-center py-2 border-b border-gray-800">
+                <span class="text-sm">${p.host}:${p.port}</span>
+                <span class="text-xs text-gray-500">${p.type}</span>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading proxies:', error);
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadDashboard();
+    loadAccounts();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        if (document.getElementById('tab-dashboard').classList.contains('hidden') === false) {
+            loadDashboard();
+        }
+    }, 30000);
+});

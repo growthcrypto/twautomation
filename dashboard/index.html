@@ -8,204 +8,323 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0f172a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
-        .glass {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        .status-active { background: #10b981; }
-        .status-warning { background: #f59e0b; }
-        .status-error { background: #ef4444; }
-        .status-offline { background: #6b7280; }
     </style>
 </head>
-<body class="min-h-screen p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="glass rounded-2xl p-8 mb-8">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-4xl font-bold text-white mb-2">
-                        <i class="fab fa-twitter text-blue-400 mr-3"></i>
-                        Twitter Automation System
-                    </h1>
-                    <p class="text-gray-200">Mass traffic generation → AI chat conversion</p>
+<body class="min-h-screen">
+    <!-- Top Navigation -->
+    <nav class="bg-gray-900 border-b border-gray-800">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fab fa-twitter text-blue-400 text-2xl"></i>
+                    <h1 class="text-xl font-bold text-white">Twitter Automation System</h1>
                 </div>
-                <div class="flex gap-4">
-                    <a href="configs.html" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold transition">
-                        <i class="fas fa-cog mr-2"></i>Configs
-                    </a>
-                    <button onclick="startSystem()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-semibold transition">
+                <div class="flex items-center gap-4">
+                    <div id="systemStatus" class="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg">
+                        <span class="w-2 h-2 bg-gray-500 rounded-full" id="statusDot"></span>
+                        <span class="text-sm text-gray-300" id="statusText">Offline</span>
+                    </div>
+                    <button onclick="toggleSystem()" id="systemToggle" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition">
                         <i class="fas fa-play mr-2"></i>Start System
                     </button>
-                    <button onclick="stopSystem()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold transition">
-                        <i class="fas fa-stop mr-2"></i>Stop System
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        
+        <!-- Setup Steps (if not configured) -->
+        <div id="setupSteps" class="mb-8">
+            <div class="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-6 mb-6">
+                <h2 class="text-lg font-bold text-yellow-400 mb-3">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>Setup Required
+                </h2>
+                <p class="text-gray-300 mb-4">Complete these steps to start using the system:</p>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400">1</span>
+                        <span class="text-gray-300">Upload Resources (proxies, emails, profile pics)</span>
+                        <a href="#resources" onclick="showTab('resources')" class="ml-auto text-blue-400 hover:text-blue-300">Setup →</a>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400">2</span>
+                        <span class="text-gray-300">Register Twitter Accounts</span>
+                        <a href="#accounts" onclick="showTab('accounts')" class="ml-auto text-blue-400 hover:text-blue-300">Setup →</a>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400">3</span>
+                        <span class="text-gray-300">Configure Campaigns</span>
+                        <a href="#campaigns" onclick="showTab('campaigns')" class="ml-auto text-blue-400 hover:text-blue-300">Setup →</a>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-xs text-gray-400">4</span>
+                        <span class="text-gray-300">Click "Start System" above</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+            <button onclick="showTab('dashboard')" class="tab-btn px-6 py-3 bg-blue-600 text-white rounded-lg font-medium whitespace-nowrap" data-tab="dashboard">
+                <i class="fas fa-chart-line mr-2"></i>Dashboard
+            </button>
+            <button onclick="showTab('accounts')" class="tab-btn px-6 py-3 bg-gray-800 text-gray-300 rounded-lg font-medium whitespace-nowrap hover:bg-gray-700" data-tab="accounts">
+                <i class="fas fa-users mr-2"></i>Accounts
+            </button>
+            <button onclick="showTab('campaigns')" class="tab-btn px-6 py-3 bg-gray-800 text-gray-300 rounded-lg font-medium whitespace-nowrap hover:bg-gray-700" data-tab="campaigns">
+                <i class="fas fa-rocket mr-2"></i>Campaigns
+            </button>
+            <button onclick="showTab('resources')" class="tab-btn px-6 py-3 bg-gray-800 text-gray-300 rounded-lg font-medium whitespace-nowrap hover:bg-gray-700" data-tab="resources">
+                <i class="fas fa-database mr-2"></i>Resources
+            </button>
+            <button onclick="showTab('leads')" class="tab-btn px-6 py-3 bg-gray-800 text-gray-300 rounded-lg font-medium whitespace-nowrap hover:bg-gray-700" data-tab="leads">
+                <i class="fas fa-users-cog mr-2"></i>Leads
+            </button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <div class="text-gray-400 text-sm mb-2">Total Accounts</div>
+                    <div class="text-3xl font-bold text-white" id="metric-total">0</div>
+                    <div class="text-green-400 text-sm mt-2"><span id="metric-active">0</span> active</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <div class="text-gray-400 text-sm mb-2">Today's Follows</div>
+                    <div class="text-3xl font-bold text-white" id="metric-follows">0</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <div class="text-gray-400 text-sm mb-2">Active Leads</div>
+                    <div class="text-3xl font-bold text-white" id="metric-leads">0</div>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <div class="text-gray-400 text-sm mb-2">Conversions</div>
+                    <div class="text-3xl font-bold text-green-400" id="metric-conversions">0</div>
+                </div>
+            </div>
+
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                <h3 class="text-lg font-bold text-white mb-4">Recent Activity</h3>
+                <div id="activityLog" class="space-y-2 text-gray-400 text-sm">
+                    <p>No activity yet. Start the system to begin.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Tab -->
+        <div id="tab-accounts" class="tab-content hidden">
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg mb-6">
+                <h3 class="text-lg font-bold text-white mb-4">Register Twitter Account</h3>
+                <form id="accountForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Twitter Username</label>
+                            <input type="text" name="username" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="@username">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                            <input type="password" name="password" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Role</label>
+                            <select name="role" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                                <option value="traffic">Traffic (Follow/DM)</option>
+                                <option value="chat">Chat (AI Conversion)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Niche</label>
+                            <select name="niche" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                                <option value="soccer">Soccer</option>
+                                <option value="politics">Politics</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="drama">Drama</option>
+                                <option value="general">General</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded font-medium">
+                        <i class="fas fa-plus mr-2"></i>Register Account
                     </button>
-                    <button onclick="refreshDashboard()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold transition">
-                        <i class="fas fa-sync mr-2"></i>Refresh
+                </form>
+            </div>
+
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                <h3 class="text-lg font-bold text-white mb-4">Registered Accounts</h3>
+                <div id="accountsList" class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="border-b border-gray-800">
+                            <tr>
+                                <th class="pb-3 text-gray-400 font-medium">Username</th>
+                                <th class="pb-3 text-gray-400 font-medium">Role</th>
+                                <th class="pb-3 text-gray-400 font-medium">Niche</th>
+                                <th class="pb-3 text-gray-400 font-medium">Status</th>
+                                <th class="pb-3 text-gray-400 font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accountsTableBody" class="text-gray-300">
+                            <tr><td colspan="5" class="py-4 text-center text-gray-500">No accounts registered</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaigns Tab -->
+        <div id="tab-campaigns" class="tab-content hidden">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-user-plus text-blue-400 mr-2"></i>Follow/Unfollow
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Generate traffic by following users</p>
+                    <button onclick="showCampaignConfig('follow')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium">
+                        Configure
+                    </button>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-envelope text-green-400 mr-2"></i>Mass DM
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Send DMs to route traffic</p>
+                    <button onclick="showCampaignConfig('dm')" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-medium">
+                        Configure
+                    </button>
+                </div>
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-robot text-purple-400 mr-2"></i>AI Chat
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Convert leads with AI</p>
+                    <button onclick="showCampaignConfig('chat')" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-medium">
+                        Configure
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- System Status -->
-        <div class="glass rounded-2xl p-6 mb-8">
-            <h2 class="text-2xl font-bold text-white mb-4">System Status</h2>
-            <div class="grid grid-cols-4 gap-4">
-                <div class="bg-white/10 rounded-xl p-4">
-                    <span id="status-database" class="status-dot status-offline"></span>
-                    <span class="text-white font-semibold">Database</span>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4">
-                    <span id="status-adspower" class="status-dot status-offline"></span>
-                    <span class="text-white font-semibold">AdsPower</span>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4">
-                    <span id="status-health" class="status-dot status-offline"></span>
-                    <span class="text-white font-semibold">Health Monitor</span>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4">
-                    <span id="status-scheduler" class="status-dot status-offline"></span>
-                    <span class="text-white font-semibold">Task Scheduler</span>
+            <!-- Campaign Config Modal -->
+            <div id="campaignConfigModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+                <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-white" id="configModalTitle">Campaign Config</h3>
+                        <button onclick="closeCampaignConfig()" class="text-gray-400 hover:text-white">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                    <div id="configModalContent">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Key Metrics -->
-        <div class="grid grid-cols-4 gap-6 mb-8">
-            <div class="glass rounded-2xl p-6">
-                <div class="text-gray-300 text-sm mb-2">Total Accounts</div>
-                <div class="text-4xl font-bold text-white" id="metric-total-accounts">0</div>
-                <div class="text-green-400 text-sm mt-2">
-                    <span id="metric-active-accounts">0</span> active
+        <!-- Resources Tab -->
+        <div id="tab-resources" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Proxies -->
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-network-wired text-blue-400 mr-2"></i>Proxies
+                    </h3>
+                    <form id="proxyForm" class="space-y-4 mb-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Proxy Host</label>
+                                <input type="text" name="host" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="proxy.example.com">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Port</label>
+                                <input type="number" name="port" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="12345">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                                <input type="text" name="username" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                                <input type="password" name="password" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            </div>
+                        </div>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded font-medium">
+                            <i class="fas fa-plus mr-2"></i>Add Proxy
+                        </button>
+                    </form>
+                    <div id="proxiesList" class="text-gray-400 text-sm">
+                        No proxies added yet
+                    </div>
                 </div>
-            </div>
-            <div class="glass rounded-2xl p-6">
-                <div class="text-gray-300 text-sm mb-2">Today's Activity</div>
-                <div class="text-4xl font-bold text-white" id="metric-today-follows">0</div>
-                <div class="text-gray-300 text-sm mt-2">
-                    Follows: <span id="metric-today-follows-detail">0</span> | 
-                    DMs: <span id="metric-today-dms">0</span>
+
+                <!-- API Keys -->
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-key text-yellow-400 mr-2"></i>API Keys
+                    </h3>
+                    <form id="apiKeysForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">5sim API Key (Phone Numbers)</label>
+                            <input type="text" name="phoneApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Your 5sim API key">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">2captcha API Key (Captcha Solving)</label>
+                            <input type="text" name="captchaApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Your 2captcha API key">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">AI API URL</label>
+                            <input type="url" name="aiApiUrl" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="https://api.openai.com/v1/chat/completions">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">AI API Key</label>
+                            <input type="text" name="aiApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="sk-...">
+                        </div>
+                        <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-6 rounded font-medium">
+                            <i class="fas fa-save mr-2"></i>Save API Keys
+                        </button>
+                    </form>
                 </div>
-            </div>
-            <div class="glass rounded-2xl p-6">
-                <div class="text-gray-300 text-sm mb-2">Lead Pipeline</div>
-                <div class="text-4xl font-bold text-white" id="metric-leads-active">0</div>
-                <div class="text-gray-300 text-sm mt-2">
-                    <span id="metric-leads-new">0</span> new | 
-                    <span id="metric-leads-link-sent">0</span> link sent
-                </div>
-            </div>
-            <div class="glass rounded-2xl p-6">
-                <div class="text-gray-300 text-sm mb-2">Conversions Today</div>
-                <div class="text-4xl font-bold text-green-400" id="metric-conversions">0</div>
-                <div class="text-gray-300 text-sm mt-2">
-                    $<span id="metric-revenue">0.00</span> revenue
+
+                <!-- Profile Pictures -->
+                <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">
+                        <i class="fas fa-images text-purple-400 mr-2"></i>Profile Pictures
+                    </h3>
+                    <p class="text-gray-400 text-sm mb-4">Upload profile pictures for auto-created accounts</p>
+                    <input type="file" id="profilePicsUpload" multiple accept="image/*" class="hidden">
+                    <button onclick="document.getElementById('profilePicsUpload').click()" class="bg-purple-600 hover:bg-purple-700 text-white py-2 px-6 rounded font-medium">
+                        <i class="fas fa-upload mr-2"></i>Upload Images
+                    </button>
+                    <div id="profilePicsList" class="mt-4 text-gray-400 text-sm">
+                        No images uploaded yet
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Accounts Overview -->
-        <div class="glass rounded-2xl p-6 mb-8">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-white">Accounts</h2>
-                <button onclick="showCreateAccountModal()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
-                    <i class="fas fa-plus mr-2"></i>Create Account
-                </button>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-white">
-                    <thead>
-                        <tr class="border-b border-white/20">
-                            <th class="text-left py-3 px-4">Username</th>
-                            <th class="text-left py-3 px-4">Role</th>
-                            <th class="text-left py-3 px-4">Niche</th>
-                            <th class="text-left py-3 px-4">Status</th>
-                            <th class="text-left py-3 px-4">Today's Activity</th>
-                            <th class="text-left py-3 px-4">Performance</th>
-                            <th class="text-left py-3 px-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="accounts-table-body">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Lead Pipeline -->
-        <div class="glass rounded-2xl p-6 mb-8">
-            <h2 class="text-2xl font-bold text-white mb-6">Lead Pipeline</h2>
-            <div class="grid grid-cols-5 gap-4 mb-6">
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-white" id="pipeline-new">0</div>
-                    <div class="text-gray-300 text-sm">New Leads</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-white" id="pipeline-dm-sent">0</div>
-                    <div class="text-gray-300 text-sm">DM Sent</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-white" id="pipeline-conversation">0</div>
-                    <div class="text-gray-300 text-sm">In Conversation</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-white" id="pipeline-link-sent">0</div>
-                    <div class="text-gray-300 text-sm">Link Sent</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-green-400" id="pipeline-converted">0</div>
-                    <div class="text-gray-300 text-sm">Converted</div>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-white">
-                    <thead>
-                        <tr class="border-b border-white/20">
-                            <th class="text-left py-3 px-4">Username</th>
-                            <th class="text-left py-3 px-4">Status</th>
-                            <th class="text-left py-3 px-4">Source Account</th>
-                            <th class="text-left py-3 px-4">Chat Account</th>
-                            <th class="text-left py-3 px-4">Messages</th>
-                            <th class="text-left py-3 px-4">Last Contact</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leads-table-body">
-                        <!-- Populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Task Queue -->
-        <div class="glass rounded-2xl p-6">
-            <h2 class="text-2xl font-bold text-white mb-6">Task Queue</h2>
-            <div class="grid grid-cols-4 gap-4 mb-6">
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-yellow-400" id="tasks-pending">0</div>
-                    <div class="text-gray-300 text-sm">Pending</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-blue-400" id="tasks-in-progress">0</div>
-                    <div class="text-gray-300 text-sm">In Progress</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-green-400" id="tasks-completed">0</div>
-                    <div class="text-gray-300 text-sm">Completed Today</div>
-                </div>
-                <div class="bg-white/10 rounded-xl p-4 text-center">
-                    <div class="text-2xl font-bold text-red-400" id="tasks-failed">0</div>
-                    <div class="text-gray-300 text-sm">Failed Today</div>
+        <!-- Leads Tab -->
+        <div id="tab-leads" class="tab-content hidden">
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                <h3 class="text-lg font-bold text-white mb-4">Lead Pipeline</h3>
+                <div id="leadsList" class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="border-b border-gray-800">
+                            <tr>
+                                <th class="pb-3 text-gray-400 font-medium">Username</th>
+                                <th class="pb-3 text-gray-400 font-medium">Status</th>
+                                <th class="pb-3 text-gray-400 font-medium">Source</th>
+                                <th class="pb-3 text-gray-400 font-medium">Messages</th>
+                                <th class="pb-3 text-gray-400 font-medium">Last Contact</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leadsTableBody" class="text-gray-300">
+                            <tr><td colspan="5" class="py-4 text-center text-gray-500">No leads yet</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -214,4 +333,3 @@
     <script src="js/dashboard.js"></script>
 </body>
 </html>
-
