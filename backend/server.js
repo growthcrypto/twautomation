@@ -67,6 +67,36 @@ app.use('/api/extension', extensionRoutes);
 // Config API
 app.use('/api/configs', configRoutes);
 
+// Cookie Management
+const cookieManager = require('./services/cookie-manager');
+
+app.post('/api/accounts/:id/extract-cookies', async (req, res) => {
+  try {
+    const result = await cookieManager.extractCookies(req.params.id);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/accounts/:id/cookie-status', async (req, res) => {
+  try {
+    const status = await cookieManager.getCookieStatus(req.params.id);
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/accounts/:id/test-cookies', async (req, res) => {
+  try {
+    const result = await cookieManager.testCookies(req.params.id);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Account Management
 app.get('/api/accounts', async (req, res) => {
   try {

@@ -76,7 +76,7 @@ document.getElementById('accountForm').addEventListener('submit', async (e) => {
     const formData = new FormData(e.target);
     const data = {
         username: formData.get('username'),
-        password: formData.get('password'),
+        adsPowerProfileId: formData.get('adsPowerProfileId'),
         role: formData.get('role'),
         niche: formData.get('niche'),
         status: 'active'
@@ -92,7 +92,7 @@ document.getElementById('accountForm').addEventListener('submit', async (e) => {
         const result = await response.json();
 
         if (result.success || response.ok) {
-            alert('✅ Account registered!');
+            alert('✅ Account registered! Now click "Extract Cookies" to save login session.');
             e.target.reset();
             loadAccounts();
         } else {
@@ -120,7 +120,7 @@ async function loadAccounts() {
             <tr class="border-b border-gray-800">
                 <td class="py-3">@${acc.username}</td>
                 <td class="py-3">
-                    <span class="px-2 py-1 text-xs rounded ${acc.role === 'traffic' ? 'bg-blue-900 text-blue-300' : 'bg-purple-900 text-purple-300'}">
+                    <span class="px-2 py-1 text-xs rounded ${getRoleColor(acc.role)}">
                         ${acc.role}
                     </span>
                 </td>
@@ -131,16 +131,42 @@ async function loadAccounts() {
                     </span>
                 </td>
                 <td class="py-3">
-                    <button onclick="deleteAccount('${acc._id}')" class="text-red-400 hover:text-red-300">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <span class="px-2 py-1 text-xs rounded bg-gray-800" id="cookie-${acc._id}">
+                        Loading...
+                    </span>
+                </td>
+                <td class="py-3">
+                    <div class="flex gap-2">
+                        <button onclick="extractCookies('${acc._id}')" class="text-blue-400 hover:text-blue-300 text-sm" title="Extract Cookies">
+                            <i class="fas fa-cookie"></i>
+                        </button>
+                        <button onclick="testCookies('${acc._id}')" class="text-green-400 hover:text-green-300 text-sm" title="Test Cookies">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                        <button onclick="deleteAccount('${acc._id}')" class="text-red-400 hover:text-red-300 text-sm" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
 
+        // Load cookie status for each account
+        data.accounts.forEach(acc => loadCookieStatus(acc._id));
+
     } catch (error) {
         console.error('Error loading accounts:', error);
     }
+}
+
+function getRoleColor(role) {
+    const colors = {
+        follow: 'bg-blue-900 text-blue-300',
+        massdm: 'bg-green-900 text-green-300',
+        chat: 'bg-purple-900 text-purple-300',
+        traffic: 'bg-blue-900 text-blue-300'
+    };
+    return colors[role] || 'bg-gray-800 text-gray-400';
 }
 
 function getStatusColor(status) {
@@ -150,6 +176,89 @@ function getStatusColor(status) {
         banned: 'bg-red-900 text-red-300'
     };
     return colors[status] || 'bg-gray-800 text-gray-400';
+}
+
+// Cookie Management
+async function loadCookieStatus(accountId) {
+    try {
+        const response = await fetch(`${API_URL}/accounts/${accountId}/cookie-status`);
+        const data = await response.json();
+
+        const element = document.getElementById(`cookie-${accountId}`);
+        if (!element) return;
+
+        if (data.hasCookies) {
+            const colors = {
+                'Valid': 'bg-green-900 text-green-300',
+                'Expiring Soon': 'bg-yellow-900 text-yellow-300',
+                'Expired': 'bg-red-900 text-red-300'
+            };
+            element.className = `px-2 py-1 text-xs rounded ${colors[data.status] || 'bg-gray-800'}`;
+            element.textContent = data.message;
+        } else {
+            element.className = 'px-2 py-1 text-xs rounded bg-gray-800 text-gray-400';
+            element.textContent = 'No cookies';
+        }
+    } catch (error) {
+        console.error('Error loading cookie status:', error);
+    }
+}
+
+async function extractCookies(accountId) {
+    if (!confirm('Make sure you are logged into Twitter in the AdsPower profile for this account. Continue?')) {
+        return;
+    }
+
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const response = await fetch(`${API_URL}/accounts/${accountId}/extract-cookies`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`✅ ${result.message}\nExtracted ${result.cookieCount} cookies.`);
+            loadCookieStatus(accountId);
+        } else {
+            alert('❌ Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-cookie"></i>';
+    }
+}
+
+async function testCookies(accountId) {
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    try {
+        const response = await fetch(`${API_URL}/accounts/${accountId}/test-cookies`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.valid) {
+            alert('✅ ' + result.message);
+        } else {
+            alert('❌ Cookies invalid: ' + result.reason);
+        }
+
+        loadCookieStatus(accountId);
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-circle"></i>';
+    }
 }
 
 async function deleteAccount(id) {

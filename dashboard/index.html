@@ -123,23 +123,43 @@
 
         <!-- Accounts Tab -->
         <div id="tab-accounts" class="tab-content hidden">
+            <div class="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-info-circle text-yellow-400 text-xl mt-1"></i>
+                    <div class="text-sm text-gray-300">
+                        <div class="font-bold text-yellow-400 mb-2">Setup Instructions:</div>
+                        <ol class="list-decimal list-inside space-y-1">
+                            <li>Create Twitter account manually on twitter.com</li>
+                            <li>Create AdsPower profile with SAME name as Twitter username</li>
+                            <li>Open AdsPower profile and login to Twitter (complete 2FA)</li>
+                            <li>Register account below</li>
+                            <li>Click "Extract Cookies" to save login session</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg mb-6">
                 <h3 class="text-lg font-bold text-white mb-4">Register Twitter Account</h3>
                 <form id="accountForm" class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Twitter Username</label>
-                            <input type="text" name="username" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="@username">
+                            <input type="text" name="username" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="SoccerDebates123">
+                            <p class="text-xs text-gray-500 mt-1">Must match AdsPower profile name</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                            <input type="password" name="password" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">AdsPower Profile ID</label>
+                            <input type="text" name="adsPowerProfileId" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="j1k2m3n4">
+                            <p class="text-xs text-gray-500 mt-1">Find in AdsPower profile list</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">Role</label>
                             <select name="role" required class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
-                                <option value="traffic">Traffic (Follow/DM)</option>
-                                <option value="chat">Chat (AI Conversion)</option>
+                                <option value="">Select role...</option>
+                                <option value="follow">Follow/Unfollow</option>
+                                <option value="massdm">Mass DM</option>
+                                <option value="chat">Chat (AI)</option>
                             </select>
                         </div>
                         <div>
@@ -169,6 +189,7 @@
                                 <th class="pb-3 text-gray-400 font-medium">Role</th>
                                 <th class="pb-3 text-gray-400 font-medium">Niche</th>
                                 <th class="pb-3 text-gray-400 font-medium">Status</th>
+                                <th class="pb-3 text-gray-400 font-medium">Cookies</th>
                                 <th class="pb-3 text-gray-400 font-medium">Actions</th>
                             </tr>
                         </thead>
