@@ -704,6 +704,36 @@ async function loadAPIKeys() {
     }
 }
 
+// Clear API keys
+async function clearAPIKeys() {
+    if (!confirm('⚠️ Are you sure you want to clear ALL API keys?\n\nThis will delete:\n- Phone Service API Key\n- 2Captcha API Key\n- AI API URL & Key\n\nThis cannot be undone!')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/resources/api-keys?keyType=all`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ All API keys cleared successfully!');
+            
+            // Clear form inputs
+            const form = document.getElementById('apiKeysForm');
+            if (form) {
+                form.reset();
+            }
+        } else {
+            alert(`❌ Error: ${result.error}`);
+        }
+    } catch (error) {
+        console.error('❌ Error clearing API keys:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();

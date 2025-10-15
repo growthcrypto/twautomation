@@ -275,5 +275,57 @@ router.post('/api-keys', async (req, res) => {
   }
 });
 
+// Delete/Clear API keys
+router.delete('/api-keys', async (req, res) => {
+  try {
+    const { keyType } = req.query; // 'phone', 'captcha', 'ai', or 'all'
+
+    let pool = await ResourcePool.findOne();
+    if (!pool) {
+      return res.json({ success: true, message: 'No API keys to delete' });
+    }
+
+    if (!pool.apiKeys) pool.apiKeys = {};
+
+    // Delete specific key or all
+    if (keyType === 'all') {
+      pool.phoneService = { provider: '5sim' };
+      pool.apiKeys = {};
+      pool.markModified('phoneService');
+      pool.markModified('apiKeys');
+      console.log('🗑️  Deleted ALL API keys');
+    } else if (keyType === 'phone') {
+      if (pool.phoneService) {
+        pool.phoneService.apiKey = null;
+        pool.markModified('phoneService');
+      }
+      console.log('🗑️  Deleted phone API key');
+    } else if (keyType === 'captcha') {
+      if (pool.apiKeys) {
+        pool.apiKeys.twoCaptcha = null;
+        pool.markModified('apiKeys');
+      }
+      console.log('🗑️  Deleted 2Captcha API key');
+    } else if (keyType === 'ai') {
+      if (pool.apiKeys) {
+        pool.apiKeys.ai = null;
+        pool.markModified('apiKeys');
+      }
+      console.log('🗑️  Deleted AI API keys');
+    }
+
+    await pool.save();
+
+    res.json({ 
+      success: true, 
+      message: `API keys deleted: ${keyType || 'all'}` 
+    });
+
+  } catch (error) {
+    console.error('❌ Error deleting API keys:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 

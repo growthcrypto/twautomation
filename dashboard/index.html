@@ -325,9 +325,14 @@
                             <label class="block text-sm font-medium text-gray-300 mb-2">AI API Key</label>
                             <input type="text" name="aiApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="sk-...">
                         </div>
-                        <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-6 rounded font-medium">
-                            <i class="fas fa-save mr-2"></i>Save API Keys
-                        </button>
+                        <div class="flex gap-3">
+                            <button type="submit" class="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-6 rounded font-medium">
+                                <i class="fas fa-save mr-2"></i>Save API Keys
+                            </button>
+                            <button type="button" onclick="clearAPIKeys()" class="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded font-medium">
+                                <i class="fas fa-trash mr-2"></i>Clear All Keys
+                            </button>
+                        </div>
                     </form>
                 </div>
 
