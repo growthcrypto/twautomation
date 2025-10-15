@@ -91,8 +91,14 @@ const connectDB = async () => {
 
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
-    console.error('⚠️  App will start but database features will not work');
-    // Don't exit - let app start anyway
+    console.error('   Error type:', error.name);
+    console.error('   Full error:', error);
+    console.error('\n⚠️  CRITICAL: Database features will NOT work!');
+    console.error('   Please check:');
+    console.error('   1. MONGODB_URI or MONGO_URL is set in Railway');
+    console.error('   2. MongoDB addon is added to your Railway project');
+    console.error('   3. Connection string is correct\n');
+    throw error; // Re-throw so startServer can handle it
   }
 };
 
@@ -689,18 +695,18 @@ const startServer = async () => {
     console.log('🚀 Starting Twitter Automation System...');
     console.log('   PORT:', PORT);
     console.log('   NODE_ENV:', process.env.NODE_ENV);
-    console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET (using default)');
+    console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
+    console.log('   MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
 
-    // Start server FIRST (so Railway knows app is responding)
+    // IMPORTANT: Connect to MongoDB FIRST (Railway needs this)
+    await connectDB();
+
+    // Start server AFTER database is connected
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ HTTP Server listening on port ${PORT}`);
       console.log(`   Health check: http://0.0.0.0:${PORT}/health`);
       console.log(`   Test endpoint: http://0.0.0.0:${PORT}/test`);
-    });
-
-    // Then try to connect to MongoDB (non-blocking)
-    connectDB().catch((err) => {
-      console.error('⚠️  MongoDB connection failed, but server is running');
+      console.log(`   Dashboard: http://0.0.0.0:${PORT}`);
     });
 
     // Check AdsPower (non-blocking, don't await)
@@ -713,7 +719,11 @@ const startServer = async () => {
 
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
-    process.exit(1);
+    // Still start the server even if DB fails (Railway needs a responding port)
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log('⚠️  Server started WITHOUT database connection');
+      console.log(`   Check MONGODB_URI or MONGO_URL environment variable`);
+    });
   }
 };
 
