@@ -298,12 +298,24 @@
                     </h3>
                     <form id="apiKeysForm" class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">5sim API Key (Phone Numbers)</label>
-                            <input type="text" name="phoneApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Your 5sim API key">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                SMSPool API Key 
+                                <a href="https://www.smspool.net/" target="_blank" class="text-blue-400 hover:text-blue-300 text-xs ml-2">
+                                    (Get it here →)
+                                </a>
+                            </label>
+                            <input type="text" name="phoneApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Your SMSPool API key">
+                            <p class="text-xs text-gray-500 mt-1">Used for phone verification (~$0.40-0.80 per number)</p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">2captcha API Key (Captcha Solving)</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">
+                                2Captcha API Key 
+                                <a href="https://2captcha.com/" target="_blank" class="text-blue-400 hover:text-blue-300 text-xs ml-2">
+                                    (Get it here →)
+                                </a>
+                            </label>
                             <input type="text" name="captchaApiKey" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white" placeholder="Your 2captcha API key">
+                            <p class="text-xs text-gray-500 mt-1">Used for solving captchas (~$0.05-0.15 per account)</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-300 mb-2">AI API URL</label>
