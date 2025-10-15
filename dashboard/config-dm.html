@@ -230,7 +230,8 @@
 
                 const container = document.getElementById('accountsList');
                 
-                const dmAccounts = data.accounts?.filter(a => a.role === 'massdm') || [];
+                // Traffic accounts do Mass DM campaigns
+                const dmAccounts = data.accounts?.filter(a => a.role === 'traffic') || [];
 
                 if (dmAccounts.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-sm">No Mass DM accounts registered yet.</p>';

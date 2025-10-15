@@ -321,8 +321,8 @@
                     return;
                 }
 
-                // Filter to show only follow role accounts
-                const followAccounts = data.accounts.filter(a => a.role === 'follow');
+                // Filter to show only traffic role accounts (they do follow/unfollow)
+                const followAccounts = data.accounts.filter(a => a.role === 'traffic');
 
                 if (followAccounts.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-sm">No Follow/Unfollow accounts registered yet.</p>';
