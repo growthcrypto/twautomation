@@ -189,35 +189,75 @@ router.post('/api-keys', async (req, res) => {
   try {
     const { phoneApiKey, captchaApiKey, aiApiUrl, aiApiKey } = req.body;
 
+    console.log('📥 Received API keys save request:', {
+      phoneApiKey: phoneApiKey ? '(provided)' : '(empty)',
+      captchaApiKey: captchaApiKey ? '(provided)' : '(empty)',
+      aiApiUrl: aiApiUrl || '(empty)',
+      aiApiKey: aiApiKey ? '(provided)' : '(empty)'
+    });
+
     let pool = await ResourcePool.findOne();
     if (!pool) {
-      pool = await ResourcePool.create({});
+      console.log('📦 Creating new ResourcePool...');
+      pool = new ResourcePool({
+        phoneService: {},
+        apiKeys: {
+          twoCaptcha: '',
+          ai: {
+            url: '',
+            key: ''
+          }
+        },
+        profilePictures: [],
+        bioTemplates: [],
+        emails: [],
+        usernamePatterns: []
+      });
+    }
+
+    // Initialize apiKeys if not exists
+    if (!pool.apiKeys) {
+      pool.apiKeys = {
+        twoCaptcha: '',
+        ai: { url: '', key: '' }
+      };
     }
 
     // Save phone service key
     if (phoneApiKey) {
-      pool.phoneService = {
-        provider: pool.phoneService?.provider || '5sim',
-        apiKey: phoneApiKey,
-        lastChecked: new Date()
-      };
+      if (!pool.phoneService) pool.phoneService = {};
+      pool.phoneService.provider = pool.phoneService.provider || '5sim';
+      pool.phoneService.apiKey = phoneApiKey;
+      pool.phoneService.lastChecked = new Date();
+      console.log('✅ Phone API key set');
     }
 
     // Save 2captcha key
     if (captchaApiKey) {
-      if (!pool.apiKeys) pool.apiKeys = {};
       pool.apiKeys.twoCaptcha = captchaApiKey;
+      console.log('✅ 2Captcha API key set');
     }
 
     // Save AI API settings
     if (aiApiUrl || aiApiKey) {
-      if (!pool.apiKeys) pool.apiKeys = {};
       if (!pool.apiKeys.ai) pool.apiKeys.ai = {};
-      if (aiApiUrl) pool.apiKeys.ai.url = aiApiUrl;
-      if (aiApiKey) pool.apiKeys.ai.key = aiApiKey;
+      if (aiApiUrl) {
+        pool.apiKeys.ai.url = aiApiUrl;
+        console.log('✅ AI API URL set');
+      }
+      if (aiApiKey) {
+        pool.apiKeys.ai.key = aiApiKey;
+        console.log('✅ AI API Key set');
+      }
     }
 
+    // Mark as modified (important for nested objects!)
+    pool.markModified('phoneService');
+    pool.markModified('apiKeys');
+
     await pool.save();
+
+    console.log('💾 API keys saved to database successfully');
 
     // Also update environment variables for immediate use
     if (captchaApiKey) {
@@ -245,7 +285,8 @@ router.post('/api-keys', async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('❌ Error saving API keys:', error);
+    res.status(500).json({ success: false, error: error.message, stack: error.stack });
   }
 });
 
