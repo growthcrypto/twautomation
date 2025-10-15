@@ -55,10 +55,10 @@ class HealthMonitor {
     console.log('\n🏥 Running health checks...');
 
     try {
-      // Get all active and warming_up accounts (lean for performance)
+      // Get all active and warming_up accounts (NOT lean - we need to save them)
       const accounts = await TwitterAccount.find({
         status: { $in: ['active', 'warming_up', 'rate_limited'] }
-      }).lean();
+      });
 
       console.log(`   Checking ${accounts.length} accounts...`);
 

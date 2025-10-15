@@ -658,7 +658,13 @@ app.get('/api/analytics/dashboard', async (req, res) => {
 app.post('/api/system/start', async (req, res) => {
   try {
     const smartEngine = require('./services/smart-execution-engine');
+    const logStreamer = require('./utils/log-streamer');
+    
+    logStreamer.info('🚀 Starting system via dashboard...');
+    
     const result = await smartEngine.start();
+
+    logStreamer.success('✅ System started successfully', { accountsManaged: result.accountsManaged });
 
     res.json({
       success: true,
@@ -666,6 +672,7 @@ app.post('/api/system/start', async (req, res) => {
       ...result
     });
   } catch (error) {
+    logStreamer.error('❌ Failed to start system', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -673,7 +680,13 @@ app.post('/api/system/start', async (req, res) => {
 app.post('/api/system/stop', async (req, res) => {
   try {
     const smartEngine = require('./services/smart-execution-engine');
+    const logStreamer = require('./utils/log-streamer');
+    
+    logStreamer.info('🛑 Stopping system via dashboard...');
+    
     const result = await smartEngine.stop();
+
+    logStreamer.success('✅ System stopped successfully');
 
     res.json({
       success: true,
@@ -681,6 +694,7 @@ app.post('/api/system/stop', async (req, res) => {
       ...result
     });
   } catch (error) {
+    logStreamer.error('❌ Failed to stop system', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -720,6 +734,23 @@ app.get('/health', (req, res) => {
 // Simple test endpoint
 app.get('/test', (req, res) => {
   res.send('Twitter Automation System is running! ✅');
+});
+
+// Live logs endpoint (Server-Sent Events)
+const logStreamer = require('./utils/log-streamer');
+
+app.get('/api/logs/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  // Add client
+  logStreamer.addClient(res);
+  
+  // Remove on disconnect
+  req.on('close', () => {
+    logStreamer.removeClient(res);
+  });
 });
 
 // Dashboard route

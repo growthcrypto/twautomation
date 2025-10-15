@@ -750,6 +750,95 @@ async function clearAPIKeys() {
     }
 }
 
+// Live Logs
+let logsVisible = false;
+let logEventSource = null;
+
+function toggleLogs() {
+    const container = document.getElementById('liveLogsContainer');
+    const btn = document.getElementById('logsToggleBtn');
+    
+    logsVisible = !logsVisible;
+    
+    if (logsVisible) {
+        container.style.display = 'block';
+        btn.querySelector('span').textContent = 'Hide Logs';
+        connectToLogs();
+    } else {
+        container.style.display = 'none';
+        btn.querySelector('span').textContent = 'Show Logs';
+        if (logEventSource) {
+            logEventSource.close();
+            logEventSource = null;
+        }
+    }
+}
+
+function connectToLogs() {
+    if (logEventSource) return;
+    
+    const logsContent = document.getElementById('logsContent');
+    logsContent.innerHTML = '<div class="text-gray-500">📡 Connected to live logs...</div>';
+    
+    logEventSource = new EventSource(`${API_URL}/logs/stream`);
+    
+    logEventSource.onmessage = (event) => {
+        const log = JSON.parse(event.data);
+        appendLog(log);
+    };
+    
+    logEventSource.onerror = () => {
+        document.getElementById('logClientCount').textContent = '❌ Disconnected';
+        setTimeout(() => {
+            if (logsVisible) {
+                logEventSource.close();
+                logEventSource = null;
+                connectToLogs();
+            }
+        }, 3000);
+    };
+    
+    logEventSource.onopen = () => {
+        document.getElementById('logClientCount').textContent = '✅ Connected';
+    };
+}
+
+function appendLog(log) {
+    const logsContent = document.getElementById('logsContent');
+    const time = new Date(log.timestamp).toLocaleTimeString();
+    
+    const colors = {
+        info: 'text-blue-400',
+        success: 'text-green-400',
+        warning: 'text-yellow-400',
+        error: 'text-red-400'
+    };
+    
+    const color = colors[log.level] || 'text-gray-400';
+    
+    const logLine = document.createElement('div');
+    logLine.className = `${color} mb-1`;
+    logLine.innerHTML = `<span class="text-gray-500">[${time}]</span> ${log.message}`;
+    
+    logsContent.appendChild(logLine);
+    
+    // Auto-scroll to bottom
+    logsContent.scrollTop = logsContent.scrollHeight;
+    
+    // Keep only last 200 logs
+    while (logsContent.children.length > 200) {
+        logsContent.removeChild(logsContent.firstChild);
+    }
+}
+
+function clearLogs() {
+    document.getElementById('logsContent').innerHTML = '<div class="text-gray-500">Logs cleared. New logs will appear here...</div>';
+}
+
+// Make globally available
+window.toggleLogs = toggleLogs;
+window.clearLogs = clearLogs;
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
