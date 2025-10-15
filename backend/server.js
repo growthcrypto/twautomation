@@ -327,19 +327,39 @@ app.delete('/api/accounts/:id', async (req, res) => {
   try {
     const account = await TwitterAccount.findById(req.params.id);
     
-    if (account) {
-      // Archive instead of delete
-      account.status = 'archived';
-      await account.save();
+    if (!account) {
+      return res.status(404).json({ success: false, error: 'Account not found' });
+    }
 
-      // Delete AdsPower profile
-      if (account.adsPowerProfileId) {
+    console.log(`🗑️  Deleting account @${account.username}...`);
+
+    // Cancel all pending tasks
+    await AutomationTask.updateMany(
+      { accountId: account._id, status: 'pending' },
+      { status: 'cancelled' }
+    );
+
+    // Delete related Twitter session
+    await TwitterSession.deleteOne({ accountId: account._id });
+
+    // Delete AdsPower profile (if exists and AdsPower is running)
+    if (account.adsPowerProfileId) {
+      try {
         await adsPowerController.deleteProfile(account.adsPowerProfileId);
+        console.log(`   ✅ Deleted AdsPower profile: ${account.adsPowerProfileId}`);
+      } catch (error) {
+        console.log(`   ⚠️  Could not delete AdsPower profile: ${error.message}`);
       }
     }
 
-    res.json({ success: true });
+    // Actually DELETE the account (not just archive)
+    await TwitterAccount.deleteOne({ _id: account._id });
+
+    console.log(`✅ Account @${account.username} deleted successfully`);
+
+    res.json({ success: true, message: 'Account deleted successfully' });
   } catch (error) {
+    console.error('Error deleting account:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
