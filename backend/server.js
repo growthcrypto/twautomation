@@ -45,13 +45,14 @@ app.use(express.static(path.join(__dirname, '../dashboard')));
 
 const connectDB = async () => {
   try {
-    // Railway MongoDB sets multiple env vars - check all of them
-    const mongoUri = process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.MONGO_URL || 'mongodb://localhost:27017/twitter-automation';
+    // Railway MongoDB sets multiple env vars - check PUBLIC URL first (works across services)
+    const mongoUri = process.env.MONGO_PUBLIC_URL || process.env.MONGODB_URI || process.env.MONGODB_URL || process.env.MONGO_URL || 'mongodb://localhost:27017/twitter-automation';
     console.log('🔄 Connecting to MongoDB with connection pooling...');
+    console.log('   MONGO_PUBLIC_URL:', process.env.MONGO_PUBLIC_URL ? 'SET' : 'NOT SET');
     console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
     console.log('   MONGODB_URL:', process.env.MONGODB_URL ? 'SET' : 'NOT SET');
     console.log('   MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
-    console.log('   Using:', mongoUri.replace(/\/\/.*@/, '//***:***@')); // Hide credentials
+    console.log('   Using:', mongoUri.includes('@') ? mongoUri.replace(/\/\/.*@/, '//***:***@') : mongoUri); // Hide credentials
     
     // Connection pool configuration
     const options = {
@@ -225,7 +226,7 @@ app.post('/api/accounts/bulk-create', async (req, res) => {
 
     const accountCreator = require('./services/twitter-account-creator');
     const results = [];
-    
+
     // Process in batches of 3 (parallel)
     const BATCH_SIZE = 3;
     const batches = Math.ceil(count / BATCH_SIZE);
@@ -242,9 +243,9 @@ app.post('/api/accounts/bulk-create', async (req, res) => {
       for (let i = 0; i < batchCount; i++) {
         batchPromises.push(
           accountCreator.createAccount({
-            role,
-            niche,
-            linkedChatAccountUsername: linkedChatUsername
+        role,
+        niche,
+        linkedChatAccountUsername: linkedChatUsername
           })
         );
       }
@@ -697,6 +698,7 @@ const startServer = async () => {
     console.log('🚀 Starting Twitter Automation System...');
     console.log('   PORT:', PORT);
     console.log('   NODE_ENV:', process.env.NODE_ENV);
+    console.log('   MONGO_PUBLIC_URL:', process.env.MONGO_PUBLIC_URL ? 'SET' : 'NOT SET');
     console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
     console.log('   MONGODB_URL:', process.env.MONGODB_URL ? 'SET' : 'NOT SET');
     console.log('   MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
