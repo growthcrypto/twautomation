@@ -286,16 +286,29 @@ async function testCookies(accountId) {
 }
 
 async function deleteAccount(id) {
-    if (!confirm('Delete this account?')) return;
+    if (!confirm('⚠️ Delete this account?\n\nThis will archive the account and cancel all its tasks.')) return;
     
     try {
-        await fetch(`${API_URL}/accounts/${id}`, { method: 'DELETE' });
-        alert('✅ Account deleted');
-        loadAccounts();
+        const response = await fetch(`${API_URL}/accounts/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Account deleted successfully');
+            loadAccounts();
+        } else {
+            alert('❌ Error: ' + (result.error || 'Failed to delete'));
+        }
     } catch (error) {
+        console.error('Delete error:', error);
         alert('❌ Error: ' + error.message);
     }
 }
+
+// Make functions globally available for onclick handlers
+window.deleteAccount = deleteAccount;
+window.extractCookies = extractCookies;
+window.testCookies = testCookies;
+window.clearAPIKeys = clearAPIKeys;
 
 // Load dashboard metrics
 async function loadDashboard() {
