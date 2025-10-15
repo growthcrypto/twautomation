@@ -264,6 +264,11 @@ async function loadConfigs() {
                     <td class="py-3 text-xs text-gray-400">${details}</td>
                     <td class="py-3">
                         <div class="flex gap-2 justify-center">
+                            <button onclick="editConfigAccounts('${config._id}', '${config.type}')" 
+                                class="text-blue-400 hover:text-blue-300 text-sm" 
+                                title="Edit Accounts">
+                                <i class="fas fa-edit"></i>
+                            </button>
                             <button onclick="toggleConfig('${config._id}', '${config.type}', ${!config.enabled})" 
                                 class="text-${config.enabled ? 'yellow' : 'green'}-400 hover:text-${config.enabled ? 'yellow' : 'green'}-300 text-sm" 
                                 title="${config.enabled ? 'Disable' : 'Enable'}">
@@ -329,9 +334,144 @@ async function deleteConfig(configId, type) {
     }
 }
 
+// Edit config accounts modal
+async function editConfigAccounts(configId, type) {
+  try {
+    const endpoint = type === 'Follow/Unfollow' ? 'follow-unfollow' : 'mass-dm';
+    
+    // Load config and accounts
+    const [configRes, accountsRes] = await Promise.all([
+      fetch(`${API_URL}/configs/${endpoint}/${configId}`),
+      fetch(`${API_URL}/accounts`)
+    ]);
+    
+    const configData = await configRes.json();
+    const accountsData = await accountsRes.json();
+    
+    if (!configData.success || !accountsData.success) {
+      alert('❌ Error loading data');
+      return;
+    }
+    
+    const config = configData.config;
+    const allAccounts = accountsData.accounts.filter(a => a.status !== 'archived' && a.role === 'traffic');
+    
+    // Get currently assigned account IDs
+    const assignedIds = new Set((config.accountIds || []).map(a => a._id || a));
+    
+    // Build modal HTML
+    const modalHtml = `
+      <div id="editAccountsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-white">Edit Accounts: ${config.name}</h3>
+            <button onclick="closeEditAccountsModal()" class="text-gray-400 hover:text-white">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="mb-4">
+            <p class="text-gray-400 text-sm mb-2">Select which accounts should run this campaign:</p>
+          </div>
+          
+          <div class="space-y-2 mb-6">
+            ${allAccounts.map(acc => `
+              <label class="flex items-center p-3 bg-gray-800 rounded hover:bg-gray-750 cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  value="${acc._id}" 
+                  ${assignedIds.has(acc._id) ? 'checked' : ''}
+                  class="account-checkbox w-4 h-4 mr-3"
+                >
+                <div class="flex-1">
+                  <div class="text-white font-medium">@${acc.username}</div>
+                  <div class="text-xs text-gray-500">${acc.niche || 'No niche'}</div>
+                </div>
+                <div class="text-xs ${acc.status === 'active' ? 'text-green-400' : 'text-yellow-400'}">
+                  ${acc.status}
+                </div>
+              </label>
+            `).join('')}
+          </div>
+          
+          ${allAccounts.length === 0 ? '<p class="text-gray-500 text-center py-4">No traffic accounts available. Register accounts first!</p>' : ''}
+          
+          <div class="flex gap-3">
+            <button 
+              onclick="saveConfigAccounts('${configId}', '${type}')" 
+              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-medium"
+              ${allAccounts.length === 0 ? 'disabled' : ''}
+            >
+              <i class="fas fa-save mr-2"></i>Save Changes
+            </button>
+            <button 
+              onclick="closeEditAccountsModal()" 
+              class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+  } catch (error) {
+    console.error('Error opening edit modal:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
+// Close modal
+function closeEditAccountsModal() {
+  const modal = document.getElementById('editAccountsModal');
+  if (modal) modal.remove();
+}
+
+// Save account assignments
+async function saveConfigAccounts(configId, type) {
+  try {
+    // Get selected account IDs
+    const checkboxes = document.querySelectorAll('.account-checkbox:checked');
+    const accountIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (accountIds.length === 0) {
+      if (!confirm('⚠️ No accounts selected. This campaign won\'t run. Continue?')) {
+        return;
+      }
+    }
+    
+    const endpoint = type === 'Follow/Unfollow' ? 'follow-unfollow' : 'mass-dm';
+    
+    const response = await fetch(`${API_URL}/configs/${endpoint}/${configId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountIds })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      alert(`✅ Updated! ${accountIds.length} account(s) assigned.`);
+      closeEditAccountsModal();
+      loadConfigs(); // Reload to show updated counts
+    } else {
+      alert('❌ Error: ' + data.error);
+    }
+  } catch (error) {
+    console.error('Save error:', error);
+    alert('❌ Error: ' + error.message);
+  }
+}
+
 // Make globally available
 window.toggleConfig = toggleConfig;
 window.deleteConfig = deleteConfig;
+window.editConfigAccounts = editConfigAccounts;
+window.closeEditAccountsModal = closeEditAccountsModal;
+window.saveConfigAccounts = saveConfigAccounts;
 
 function getRoleColor(role) {
     const colors = {
