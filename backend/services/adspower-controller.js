@@ -80,10 +80,23 @@ class AdsPowerController {
    */
   async launchProfile(profileId, options = {}) {
     try {
-      // Check if already running
+      // Check if already running and connection is still alive
       if (this.activeProfiles.has(profileId)) {
-        console.log(`ℹ️  Profile ${profileId} is already running`);
-        return this.activeProfiles.get(profileId);
+        const cachedSession = this.activeProfiles.get(profileId);
+        
+        // Verify browser is still connected
+        try {
+          if (cachedSession.browser && cachedSession.browser.isConnected()) {
+            console.log(`ℹ️  Profile ${profileId} is already running (connection alive)`);
+            return cachedSession;
+          } else {
+            console.log(`⚠️  Cached session for ${profileId} is disconnected, removing...`);
+            this.activeProfiles.delete(profileId);
+          }
+        } catch (err) {
+          console.log(`⚠️  Error checking cached session for ${profileId}, removing...`);
+          this.activeProfiles.delete(profileId);
+        }
       }
 
       // Start the browser via AdsPower
