@@ -133,6 +133,24 @@ app.post('/api/accounts/:id/extract-cookies', async (req, res) => {
   }
 });
 
+app.post('/api/accounts/:id/set-cookies', async (req, res) => {
+  try {
+    const { cookies } = req.body;
+    
+    if (!cookies || !Array.isArray(cookies)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Cookies must be provided as an array' 
+      });
+    }
+
+    const result = await cookieManager.setCookiesManually(req.params.id, cookies);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/accounts/:id/cookie-status', async (req, res) => {
   try {
     const status = await cookieManager.getCookieStatus(req.params.id);

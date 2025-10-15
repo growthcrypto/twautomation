@@ -24,6 +24,15 @@ class CookieManager {
 
       console.log(`🍪 Extracting cookies for @${account.username}...`);
 
+      // Check if AdsPower is available
+      const adsPowerOnline = await adsPowerController.checkConnection();
+      if (!adsPowerOnline) {
+        return {
+          success: false,
+          error: 'AdsPower is not running. This feature only works locally, not on Railway. Please run the system locally to extract cookies, or manually provide cookies via API.'
+        };
+      }
+
       // Launch the AdsPower profile
       const session = await adsPowerController.launchProfile(account.adsPowerProfileId);
       const page = await adsPowerController.getPage(account.adsPowerProfileId);
@@ -85,6 +94,68 @@ class CookieManager {
 
     } catch (error) {
       console.error('❌ Error extracting cookies:', error.message);
+      console.error('   Error details:', error);
+      return {
+        success: false,
+        error: `Failed to extract cookies: ${error.message}. Make sure AdsPower is running and the profile exists.`
+      };
+    }
+  }
+
+  /**
+   * Manually set cookies (alternative to extracting from AdsPower)
+   */
+  async setCookiesManually(accountId, cookies) {
+    try {
+      const account = await TwitterAccount.findById(accountId);
+      if (!account) {
+        return { success: false, error: 'Account not found' };
+      }
+
+      console.log(`🍪 Setting cookies manually for @${account.username}...`);
+
+      // Validate cookies format
+      if (!Array.isArray(cookies) || cookies.length === 0) {
+        return { success: false, error: 'Invalid cookies format. Must be an array of cookie objects.' };
+      }
+
+      // Check for required Twitter cookies
+      const hasAuthToken = cookies.some(c => c.name === 'auth_token');
+      const hasCt0 = cookies.some(c => c.name === 'ct0');
+
+      if (!hasAuthToken || !hasCt0) {
+        return {
+          success: false,
+          error: 'Missing required Twitter cookies (auth_token, ct0). Make sure you copied all cookies from a logged-in Twitter session.'
+        };
+      }
+
+      // Save to database
+      let twitterSession = await TwitterSession.findOne({ accountId });
+      
+      if (!twitterSession) {
+        twitterSession = new TwitterSession({ accountId });
+      }
+
+      twitterSession.cookies = cookies;
+      twitterSession.isLoggedIn = true;
+      twitterSession.lastLoginDate = new Date();
+      twitterSession.status = 'active';
+      twitterSession.expiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 days
+      
+      await twitterSession.save();
+
+      console.log(`✅ Manually set ${cookies.length} cookies for @${account.username}`);
+
+      return {
+        success: true,
+        cookieCount: cookies.length,
+        expiresAt: twitterSession.expiresAt,
+        message: 'Cookies saved successfully!'
+      };
+
+    } catch (error) {
+      console.error('❌ Error setting cookies manually:', error.message);
       return {
         success: false,
         error: error.message
