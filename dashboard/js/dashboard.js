@@ -135,12 +135,15 @@ async function loadAccounts() {
 
         const tbody = document.getElementById('accountsTableBody');
         
-        if (!data.accounts || data.accounts.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-500">No accounts registered</td></tr>';
+        // Filter out archived accounts
+        const activeAccounts = (data.accounts || []).filter(acc => acc.status !== 'archived');
+        
+        if (activeAccounts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-500">No accounts registered</td></tr>';
             return;
         }
 
-        tbody.innerHTML = data.accounts.map(acc => `
+        tbody.innerHTML = activeAccounts.map(acc => `
             <tr class="border-b border-gray-800">
                 <td class="py-3">@${acc.username}</td>
                 <td class="py-3">
