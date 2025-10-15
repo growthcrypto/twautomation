@@ -38,6 +38,107 @@ class TwitterAutomationEngine {
   }
 
   // ============================================
+  // HUMANIZATION FEATURES
+  // ============================================
+
+  /**
+   * Random scrolling with human patterns (not uniform)
+   */
+  async humanScroll(page) {
+    const scrollPatterns = [
+      // Slow scroll down
+      async () => {
+        const scrolls = this.randomBetween(2, 4);
+        for (let i = 0; i < scrolls; i++) {
+          await page.evaluate(() => window.scrollBy(0, Math.random() * 200 + 100));
+          await this.humanDelay(800, 1500);
+        }
+      },
+      // Quick scroll down then pause
+      async () => {
+        await page.evaluate(() => window.scrollBy(0, Math.random() * 400 + 200));
+        await this.humanDelay(2000, 4000);
+      },
+      // Scroll down, read, scroll back up a bit
+      async () => {
+        await page.evaluate(() => window.scrollBy(0, Math.random() * 300 + 150));
+        await this.humanDelay(1500, 3000);
+        await page.evaluate(() => window.scrollBy(0, -50));
+        await this.humanDelay(500, 1000);
+      }
+    ];
+    
+    const pattern = scrollPatterns[Math.floor(Math.random() * scrollPatterns.length)];
+    await pattern();
+  }
+
+  /**
+   * Read tweets (pause while looking at content)
+   */
+  async readContent(page, minSeconds = 3, maxSeconds = 8) {
+    const readTime = this.randomBetween(minSeconds * 1000, maxSeconds * 1000);
+    console.log(`📖 Reading content for ${(readTime / 1000).toFixed(1)}s...`);
+    await this.humanDelay(readTime, readTime + 500);
+  }
+
+  /**
+   * Move mouse around randomly (looks more human)
+   */
+  async randomMouseMovement(page) {
+    const movements = this.randomBetween(2, 5);
+    for (let i = 0; i < movements; i++) {
+      const x = this.randomBetween(100, 800);
+      const y = this.randomBetween(100, 600);
+      await page.mouse.move(x, y, { steps: this.randomBetween(10, 30) });
+      await this.humanDelay(50, 200);
+    }
+  }
+
+  /**
+   * Occasionally visit home feed (looks natural)
+   */
+  async maybeVisitHomeFeed(page, probability = 15) {
+    if (Math.random() * 100 < probability) {
+      console.log(`🏠 Checking home feed (looks natural)...`);
+      await page.goto('https://twitter.com/home', { waitUntil: 'networkidle2' });
+      await this.humanScroll(page);
+      await this.readContent(page, 5, 10);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Random pause to "think" (makes timing less predictable)
+   */
+  async randomThinkingPause() {
+    if (Math.random() * 100 < 20) { // 20% chance
+      const pauseTime = this.randomBetween(2000, 5000);
+      console.log(`🤔 Thinking... (${(pauseTime / 1000).toFixed(1)}s pause)`);
+      await this.humanDelay(pauseTime, pauseTime + 500);
+    }
+  }
+
+  /**
+   * Read profile bio and tweets before following
+   */
+  async inspectProfileBeforeFollow(page) {
+    console.log(`👀 Inspecting profile...`);
+    
+    // Scroll down to see bio and tweets
+    await this.humanScroll(page);
+    
+    // Read for a bit (like a real person deciding whether to follow)
+    await this.readContent(page, 3, 6);
+    
+    // Maybe scroll back up
+    if (Math.random() > 0.5) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await this.humanDelay(500, 1000);
+    }
+  }
+
+  // ============================================
   // FOLLOW/UNFOLLOW ACTIONS
   // ============================================
 
@@ -50,10 +151,8 @@ class TwitterAutomationEngine {
 
       console.log(`👤 Following @${targetUsername}...`);
 
-      // Random activity before follow (if configured)
-      if (config.randomActivity?.viewProfile?.enabled) {
-        await this.viewProfile(page, targetUsername, config.randomActivity.viewProfile.scrollTime);
-      }
+      // Maybe visit home feed first (15% chance - looks natural)
+      await this.maybeVisitHomeFeed(page, 15);
 
       // Navigate to target profile
       await page.goto(`https://twitter.com/${targetUsername}`, { 
@@ -61,6 +160,17 @@ class TwitterAutomationEngine {
         timeout: 30000 
       });
       await this.humanDelay(2000, 4000);
+
+      // Random mouse movements (looks more human)
+      await this.randomMouseMovement(page);
+
+      // Inspect profile before following (looks human)
+      if (Math.random() > 0.3) { // 70% chance
+        await this.inspectProfileBeforeFollow(page);
+      }
+
+      // Random thinking pause
+      await this.randomThinkingPause();
 
       // Check if already following
       const alreadyFollowing = await page.$('[data-testid*="unfollow"]');
@@ -420,8 +530,8 @@ class TwitterAutomationEngine {
 
       console.log(`🔍 Scraping community ${communityId} (fresh)...`);
 
-      // Navigate to community
-      await page.goto(`https://twitter.com/i/communities/${communityId}`, { 
+      // Navigate to community MEMBERS page
+      await page.goto(`https://twitter.com/i/communities/${communityId}/members`, { 
         waitUntil: 'networkidle2',
         timeout: 30000 
       });
@@ -441,9 +551,8 @@ class TwitterAutomationEngine {
 
         users.forEach(u => usernames.add(u));
 
-        // Scroll down
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await this.humanDelay(2000, 4000);
+        // Human-like scrolling (not uniform)
+        await this.humanScroll(page);
 
         scrolls++;
       }
@@ -507,8 +616,8 @@ class TwitterAutomationEngine {
 
         users.forEach(u => usernames.add(u));
 
-        await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        await this.humanDelay(2000, 4000);
+        // Human-like scrolling (not uniform)
+        await this.humanScroll(page);
 
         scrolls++;
       }
