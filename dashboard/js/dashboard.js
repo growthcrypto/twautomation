@@ -201,6 +201,138 @@ async function loadAccounts() {
     }
 }
 
+// Load saved configs
+async function loadConfigs() {
+    try {
+        // Load both follow and DM configs
+        const [followRes, dmRes] = await Promise.all([
+            fetch(`${API_URL}/configs/follow-unfollow`),
+            fetch(`${API_URL}/configs/mass-dm`)
+        ]);
+        
+        const followData = await followRes.json();
+        const dmData = await dmRes.json();
+        
+        const allConfigs = [
+            ...(followData.configs || []).map(c => ({ ...c, type: 'Follow/Unfollow' })),
+            ...(dmData.configs || []).map(c => ({ ...c, type: 'Mass DM' }))
+        ];
+        
+        const tbody = document.getElementById('configsTableBody');
+        
+        if (allConfigs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-500">No campaigns configured. Click "Configure" buttons below to create one.</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = allConfigs.map(config => {
+            const accountCount = config.accountIds?.length || 0;
+            const accountNames = (config.accountIds || [])
+                .map(acc => acc.username ? `@${acc.username}` : '')
+                .filter(n => n)
+                .join(', ') || `${accountCount} account(s)`;
+            
+            let details = '';
+            if (config.type === 'Follow/Unfollow') {
+                const targets = (config.targetSources || []).map(t => 
+                    t.type === 'hashtag' ? `#${t.value}` : `@${t.value}`
+                ).join(', ');
+                details = `${config.maxFollowsPerDay || 0}/day → ${targets || 'No targets'}`;
+            } else if (config.type === 'Mass DM') {
+                details = `${config.maxDMsPerDay || 0} DMs/day`;
+            }
+            
+            return `
+                <tr class="border-b border-gray-800">
+                    <td class="py-3">
+                        <div class="font-medium">${config.name || 'Unnamed'}</div>
+                        <div class="text-xs text-gray-500">${config.niche || 'No niche'}</div>
+                    </td>
+                    <td class="py-3">
+                        <span class="px-2 py-1 text-xs rounded ${config.type === 'Follow/Unfollow' ? 'bg-blue-900 text-blue-300' : 'bg-green-900 text-green-300'}">
+                            ${config.type}
+                        </span>
+                    </td>
+                    <td class="py-3">
+                        <span class="text-xs" title="${accountNames}">${accountCount} account(s)</span>
+                    </td>
+                    <td class="py-3">
+                        <span class="px-2 py-1 text-xs rounded ${config.enabled ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-400'}">
+                            ${config.enabled ? 'Active' : 'Disabled'}
+                        </span>
+                    </td>
+                    <td class="py-3 text-xs text-gray-400">${details}</td>
+                    <td class="py-3">
+                        <div class="flex gap-2 justify-center">
+                            <button onclick="toggleConfig('${config._id}', '${config.type}', ${!config.enabled})" 
+                                class="text-${config.enabled ? 'yellow' : 'green'}-400 hover:text-${config.enabled ? 'yellow' : 'green'}-300 text-sm" 
+                                title="${config.enabled ? 'Disable' : 'Enable'}">
+                                <i class="fas fa-${config.enabled ? 'pause' : 'play'}-circle"></i>
+                            </button>
+                            <button onclick="deleteConfig('${config._id}', '${config.type}')" 
+                                class="text-red-400 hover:text-red-300 text-sm" 
+                                title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading configs:', error);
+    }
+}
+
+// Toggle config enabled/disabled
+async function toggleConfig(configId, type, enabled) {
+    try {
+        const endpoint = type === 'Follow/Unfollow' ? 'follow-unfollow' : 'mass-dm';
+        const response = await fetch(`${API_URL}/configs/${endpoint}/${configId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert(`✅ Campaign ${enabled ? 'enabled' : 'disabled'}!`);
+            loadConfigs();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+// Delete config
+async function deleteConfig(configId, type) {
+    if (!confirm('Are you sure you want to delete this campaign?')) return;
+    
+    try {
+        const endpoint = type === 'Follow/Unfollow' ? 'follow-unfollow' : 'mass-dm';
+        const response = await fetch(`${API_URL}/configs/${endpoint}/${configId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            alert('✅ Campaign deleted!');
+            loadConfigs();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+// Make globally available
+window.toggleConfig = toggleConfig;
+window.deleteConfig = deleteConfig;
+
 function getRoleColor(role) {
     const colors = {
         follow: 'bg-blue-900 text-blue-300',
@@ -858,6 +990,7 @@ window.clearLogs = clearLogs;
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
     loadAccounts();
+    loadConfigs();
     // API keys will load when Resources tab is opened (not on page load)
     
     // Auto-refresh every 30 seconds

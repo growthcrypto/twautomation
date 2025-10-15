@@ -214,6 +214,34 @@
 
         <!-- Campaigns Tab -->
         <div id="tab-campaigns" class="tab-content hidden">
+            <!-- Saved Campaigns -->
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg mb-6">
+                <h3 class="text-lg font-bold text-white mb-4">
+                    <i class="fas fa-list mr-2"></i>Your Saved Campaigns
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="border-b border-gray-800">
+                            <tr class="text-left">
+                                <th class="pb-3 text-gray-400 font-medium">Name</th>
+                                <th class="pb-3 text-gray-400 font-medium">Type</th>
+                                <th class="pb-3 text-gray-400 font-medium">Accounts</th>
+                                <th class="pb-3 text-gray-400 font-medium">Status</th>
+                                <th class="pb-3 text-gray-400 font-medium">Details</th>
+                                <th class="pb-3 text-gray-400 font-medium text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="configsTableBody" class="text-gray-300">
+                            <tr><td colspan="6" class="py-4 text-center text-gray-500">No campaigns configured. Click "Configure" buttons below to create one.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Create New Campaign -->
+            <h3 class="text-lg font-bold text-white mb-4">
+                <i class="fas fa-plus-circle mr-2"></i>Create New Campaign
+            </h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
                     <h3 class="text-lg font-bold text-white mb-4">
