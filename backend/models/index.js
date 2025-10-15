@@ -278,14 +278,8 @@ const resourcePoolSchema = new mongoose.Schema({
     lastChecked: Date
   },
   
-  // API Keys Storage
-  apiKeys: {
-    twoCaptcha: String,
-    ai: {
-      url: String,
-      key: String
-    }
-  },
+  // API Keys Storage (using Mixed type for flexibility)
+  apiKeys: mongoose.Schema.Types.Mixed,
   
   // Profile Pictures (organized by niche)
   profilePictures: [{

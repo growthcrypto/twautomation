@@ -199,15 +199,9 @@ router.post('/api-keys', async (req, res) => {
     let pool = await ResourcePool.findOne();
     if (!pool) {
       console.log('📦 Creating new ResourcePool...');
-      pool = new ResourcePool({
-        phoneService: {},
-        apiKeys: {
-          twoCaptcha: '',
-          ai: {
-            url: '',
-            key: ''
-          }
-        },
+      pool = await ResourcePool.create({
+        phoneService: { provider: '5sim' },
+        apiKeys: {},
         profilePictures: [],
         bioTemplates: [],
         emails: [],
@@ -215,12 +209,9 @@ router.post('/api-keys', async (req, res) => {
       });
     }
 
-    // Initialize apiKeys if not exists
-    if (!pool.apiKeys) {
-      pool.apiKeys = {
-        twoCaptcha: '',
-        ai: { url: '', key: '' }
-      };
+    // Initialize apiKeys object if it doesn't exist
+    if (!pool.apiKeys || typeof pool.apiKeys !== 'object') {
+      pool.apiKeys = {};
     }
 
     // Save phone service key
@@ -229,31 +220,25 @@ router.post('/api-keys', async (req, res) => {
       pool.phoneService.provider = pool.phoneService.provider || '5sim';
       pool.phoneService.apiKey = phoneApiKey;
       pool.phoneService.lastChecked = new Date();
+      pool.markModified('phoneService');
       console.log('✅ Phone API key set');
     }
 
     // Save 2captcha key
     if (captchaApiKey) {
       pool.apiKeys.twoCaptcha = captchaApiKey;
+      pool.markModified('apiKeys');
       console.log('✅ 2Captcha API key set');
     }
 
     // Save AI API settings
     if (aiApiUrl || aiApiKey) {
       if (!pool.apiKeys.ai) pool.apiKeys.ai = {};
-      if (aiApiUrl) {
-        pool.apiKeys.ai.url = aiApiUrl;
-        console.log('✅ AI API URL set');
-      }
-      if (aiApiKey) {
-        pool.apiKeys.ai.key = aiApiKey;
-        console.log('✅ AI API Key set');
-      }
+      if (aiApiUrl) pool.apiKeys.ai.url = aiApiUrl;
+      if (aiApiKey) pool.apiKeys.ai.key = aiApiKey;
+      pool.markModified('apiKeys');
+      console.log('✅ AI API settings set');
     }
-
-    // Mark as modified (important for nested objects!)
-    pool.markModified('phoneService');
-    pool.markModified('apiKeys');
 
     await pool.save();
 
