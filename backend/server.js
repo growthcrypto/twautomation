@@ -664,6 +664,16 @@ app.post('/api/system/start', async (req, res) => {
     
     const result = await smartEngine.start();
 
+    if (result.success === false && result.reason === 'already_running') {
+      logStreamer.warning('⚠️ System is already running');
+      return res.json({
+        success: true,
+        message: 'System is already running',
+        alreadyRunning: true,
+        accountsManaged: smartEngine.managedAccounts?.size || 0
+      });
+    }
+
     logStreamer.success('✅ System started successfully', { accountsManaged: result.accountsManaged });
 
     res.json({
@@ -672,6 +682,7 @@ app.post('/api/system/start', async (req, res) => {
       ...result
     });
   } catch (error) {
+    console.error('Start system error:', error);
     logStreamer.error('❌ Failed to start system', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
@@ -790,6 +801,13 @@ const startServer = async () => {
 
     // Start task cleanup service (runs daily)
     taskCleanup.start();
+
+    // DON'T auto-start the system - let user click Start button
+    // const smartEngine = require('./services/smart-execution-engine');
+    // await smartEngine.start();
+
+    console.log('\n✅ Server ready! Open http://localhost:3000');
+    console.log('   Click "Start System" button in dashboard to begin automation\n');
 
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
