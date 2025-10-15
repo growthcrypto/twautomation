@@ -10,9 +10,17 @@ const axios = require('axios');
 class TwitterSessionManager {
   constructor() {
     this.activeSessions = new Map(); // accountId -> { browser, page, session }
-    this.twoC
-
-aptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
+    this.sessionTimeouts = new Map(); // Track last activity time for cleanup
+    this.MAX_IDLE_TIME = 30 * 60 * 1000; // 30 minutes idle time
+    this.MAX_CONCURRENT_SESSIONS = 50; // Limit concurrent browsers to save RAM
+    this.twoCaptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
+    
+    // Start cleanup interval (every 10 minutes)
+    this.cleanupInterval = setInterval(() => {
+      this.cleanupStaleSessions();
+    }, 10 * 60 * 1000);
+    
+    console.log('✅ Session Manager initialized (max concurrent: 50, idle timeout: 30min)');
   }
 
   /**
@@ -20,9 +28,14 @@ aptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
    * Returns: { browser, page, session, isLoggedIn }
    */
   async getSession(accountId) {
+    const accountIdStr = accountId.toString();
+    
+    // Update last activity time
+    this.sessionTimeouts.set(accountIdStr, Date.now());
+    
     // Check if already has active session
-    if (this.activeSessions.has(accountId.toString())) {
-      const cached = this.activeSessions.get(accountId.toString());
+    if (this.activeSessions.has(accountIdStr)) {
+      const cached = this.activeSessions.get(accountIdStr);
       
       // Verify session is still valid
       if (await this.isSessionValid(cached.page)) {
@@ -32,6 +45,12 @@ aptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
         console.log(`⚠️  Cached session expired for account ${accountId}, re-logging in...`);
         await this.closeSession(accountId);
       }
+    }
+
+    // Enforce concurrent session limit (LRU eviction)
+    if (this.activeSessions.size >= this.MAX_CONCURRENT_SESSIONS) {
+      console.log(`⚠️  Max concurrent sessions reached (${this.MAX_CONCURRENT_SESSIONS}), evicting oldest...`);
+      await this.evictOldestSession();
     }
 
     // Create new session
@@ -332,6 +351,46 @@ aptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
   }
 
   /**
+   * Cleanup stale sessions (runs every 10 minutes)
+   */
+  async cleanupStaleSessions() {
+    const now = Date.now();
+    let cleanedCount = 0;
+    
+    for (const [accountId, lastActivity] of this.sessionTimeouts) {
+      if (now - lastActivity > this.MAX_IDLE_TIME) {
+        console.log(`🧹 Cleaning up stale session for account ${accountId} (idle: ${Math.floor((now - lastActivity) / 1000 / 60)}min)`);
+        await this.closeSession(accountId);
+        cleanedCount++;
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`✅ Cleaned up ${cleanedCount} stale sessions (${this.activeSessions.size} remaining)`);
+    }
+  }
+
+  /**
+   * Evict oldest session (LRU eviction)
+   */
+  async evictOldestSession() {
+    let oldestAccountId = null;
+    let oldestTime = Infinity;
+    
+    for (const [accountId, lastActivity] of this.sessionTimeouts) {
+      if (lastActivity < oldestTime) {
+        oldestTime = lastActivity;
+        oldestAccountId = accountId;
+      }
+    }
+    
+    if (oldestAccountId) {
+      console.log(`🗑️  Evicting oldest session: ${oldestAccountId}`);
+      await this.closeSession(oldestAccountId);
+    }
+  }
+
+  /**
    * Close session
    */
   async closeSession(accountId) {
@@ -347,6 +406,7 @@ aptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
       }
 
       this.activeSessions.delete(accountIdStr);
+      this.sessionTimeouts.delete(accountIdStr);
       console.log(`🔒 Closed session for account ${accountId}`);
     }
   }
@@ -357,11 +417,19 @@ aptchaApiKey = process.env.TWOCAPTCHA_API_KEY;
   async closeAllSessions() {
     console.log(`🔒 Closing ${this.activeSessions.size} active sessions...`);
     
+    // Clear cleanup interval
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    
     const promises = Array.from(this.activeSessions.keys()).map(accountId =>
       this.closeSession(accountId)
     );
 
     await Promise.all(promises);
+    
+    this.sessionTimeouts.clear();
   }
 
   /**

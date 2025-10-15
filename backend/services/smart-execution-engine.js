@@ -37,10 +37,13 @@ class SmartExecutionEngine {
     // Start health monitor
     healthMonitor.start();
 
-    // Get all active accounts
+    // Get all active accounts with populated fields (prevent N+1 queries)
     const accounts = await TwitterAccount.find({
       status: { $in: ['active', 'warming_up'] }
-    });
+    })
+    .populate('proxyId')
+    .populate('linkedChatAccounts')
+    .lean(); // Convert to plain objects for better performance
 
     console.log(`📊 Found ${accounts.length} accounts to manage`);
 
@@ -134,10 +137,12 @@ class SmartExecutionEngine {
     try {
       console.log('\n🔍 Periodic check...');
 
-      // Get all accounts
+      // Get all accounts (with populated fields to avoid N+1 queries)
       const accounts = await TwitterAccount.find({
         status: { $in: ['active', 'warming_up', 'rate_limited'] }
-      });
+      })
+      .populate('proxyId')
+      .lean();
 
       for (const account of accounts) {
         const accountIdStr = account._id.toString();
@@ -167,7 +172,7 @@ class SmartExecutionEngine {
       }
 
       // Check for banned accounts
-      const bannedAccounts = await TwitterAccount.find({ status: 'banned' });
+      const bannedAccounts = await TwitterAccount.find({ status: 'banned' }).lean();
       for (const account of bannedAccounts) {
         if (this.managedAccounts.has(account._id.toString())) {
           console.log(`🚫 Banned account detected: @${account.username}, stopping`);

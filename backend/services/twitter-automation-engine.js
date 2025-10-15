@@ -9,6 +9,32 @@ const { TwitterLead } = require('../models');
 class TwitterAutomationEngine {
   constructor() {
     this.activeActions = new Map(); // Track running actions per account
+    this.scrapedUsersCache = new Map(); // Cache scraped users: key -> { users, timestamp }
+    this.CACHE_TTL = 60 * 60 * 1000; // 1 hour cache TTL
+    
+    // Cleanup stale cache every 15 minutes
+    setInterval(() => {
+      this.cleanupStaleCache();
+    }, 15 * 60 * 1000);
+  }
+
+  /**
+   * Cleanup stale cache entries
+   */
+  cleanupStaleCache() {
+    const now = Date.now();
+    let cleaned = 0;
+    
+    for (const [key, data] of this.scrapedUsersCache) {
+      if (now - data.timestamp > this.CACHE_TTL) {
+        this.scrapedUsersCache.delete(key);
+        cleaned++;
+      }
+    }
+    
+    if (cleaned > 0) {
+      console.log(`🧹 Cleaned ${cleaned} stale scraping cache entries (${this.scrapedUsersCache.size} remaining)`);
+    }
   }
 
   // ============================================
@@ -374,13 +400,25 @@ class TwitterAutomationEngine {
   // ============================================
 
   /**
-   * Scrape community members
+   * Scrape community members (with caching)
    */
   async scrapeCommunityMembers(accountId, communityId, limit = 50) {
     try {
+      const cacheKey = `community:${communityId}`;
+      const cached = this.scrapedUsersCache.get(cacheKey);
+      
+      // Check cache first
+      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+        console.log(`📦 Using cached users for community ${communityId} (${cached.users.length} users, ${Math.floor((Date.now() - cached.timestamp) / 1000 / 60)}min old)`);
+        
+        const shuffled = [...cached.users].sort(() => 0.5 - Math.random());
+        return { success: true, usernames: shuffled.slice(0, limit), cached: true };
+      }
+
+      // Scrape fresh
       const page = await twitterSessionManager.getPage(accountId);
 
-      console.log(`🔍 Scraping community ${communityId}...`);
+      console.log(`🔍 Scraping community ${communityId} (fresh)...`);
 
       // Navigate to community
       await page.goto(`https://twitter.com/i/communities/${communityId}`, { 
@@ -392,9 +430,9 @@ class TwitterAutomationEngine {
       // Scroll and collect usernames
       const usernames = new Set();
       let scrolls = 0;
-      const maxScrolls = Math.ceil(limit / 10);
+      const maxScrolls = Math.ceil((limit * 3) / 10); // Scrape 3x more for cache
 
-      while (usernames.size < limit && scrolls < maxScrolls) {
+      while (usernames.size < limit * 3 && scrolls < maxScrolls) {
         // Get usernames from current view
         const users = await page.$$eval('[data-testid="User-Name"] a[href^="/"]', links =>
           links.map(link => link.getAttribute('href').replace('/', ''))
@@ -410,11 +448,18 @@ class TwitterAutomationEngine {
         scrolls++;
       }
 
-      const result = Array.from(usernames).slice(0, limit);
+      const allUsers = Array.from(usernames);
 
-      console.log(`✅ Scraped ${result.length} users from community`);
+      // Cache the results
+      this.scrapedUsersCache.set(cacheKey, {
+        users: allUsers,
+        timestamp: Date.now()
+      });
 
-      return { success: true, usernames: result };
+      console.log(`✅ Scraped ${allUsers.length} users from community (cached for 1 hour)`);
+
+      const shuffled = [...allUsers].sort(() => 0.5 - Math.random());
+      return { success: true, usernames: shuffled.slice(0, limit), cached: false };
 
     } catch (error) {
       console.error('Error scraping community:', error.message);
@@ -423,13 +468,26 @@ class TwitterAutomationEngine {
   }
 
   /**
-   * Scrape hashtag users
+   * Scrape hashtag users (with caching)
    */
   async scrapeHashtagUsers(accountId, hashtag, limit = 50) {
     try {
+      const cacheKey = `hashtag:${hashtag}`;
+      const cached = this.scrapedUsersCache.get(cacheKey);
+      
+      // Check cache first
+      if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+        console.log(`📦 Using cached users for #${hashtag} (${cached.users.length} users, ${Math.floor((Date.now() - cached.timestamp) / 1000 / 60)}min old)`);
+        
+        // Return random sample from cache
+        const shuffled = [...cached.users].sort(() => 0.5 - Math.random());
+        return { success: true, usernames: shuffled.slice(0, limit), cached: true };
+      }
+
+      // Scrape fresh
       const page = await twitterSessionManager.getPage(accountId);
 
-      console.log(`🔍 Scraping hashtag #${hashtag}...`);
+      console.log(`🔍 Scraping hashtag #${hashtag} (fresh)...`);
 
       const searchQuery = encodeURIComponent(`#${hashtag}`);
       await page.goto(`https://twitter.com/search?q=${searchQuery}&f=live`, { 
@@ -439,9 +497,9 @@ class TwitterAutomationEngine {
 
       const usernames = new Set();
       let scrolls = 0;
-      const maxScrolls = Math.ceil(limit / 10);
+      const maxScrolls = Math.ceil((limit * 3) / 10); // Scrape 3x more for cache
 
-      while (usernames.size < limit && scrolls < maxScrolls) {
+      while (usernames.size < limit * 3 && scrolls < maxScrolls) {
         const users = await page.$$eval('[data-testid="User-Name"] a[href^="/"]', links =>
           links.map(link => link.getAttribute('href').replace('/', ''))
             .filter(username => !username.includes('/'))
@@ -455,11 +513,19 @@ class TwitterAutomationEngine {
         scrolls++;
       }
 
-      const result = Array.from(usernames).slice(0, limit);
+      const allUsers = Array.from(usernames);
 
-      console.log(`✅ Scraped ${result.length} users from #${hashtag}`);
+      // Cache the results
+      this.scrapedUsersCache.set(cacheKey, {
+        users: allUsers,
+        timestamp: Date.now()
+      });
 
-      return { success: true, usernames: result };
+      console.log(`✅ Scraped ${allUsers.length} users from #${hashtag} (cached for 1 hour)`);
+
+      // Return random sample
+      const shuffled = [...allUsers].sort(() => 0.5 - Math.random());
+      return { success: true, usernames: shuffled.slice(0, limit), cached: false };
 
     } catch (error) {
       console.error('Error scraping hashtag:', error.message);

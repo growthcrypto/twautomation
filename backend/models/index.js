@@ -94,6 +94,13 @@ const twitterAccountSchema = new mongoose.Schema({
   notes: String
 }, { timestamps: true });
 
+// Indexes for performance
+twitterAccountSchema.index({ username: 1 }, { unique: true });
+twitterAccountSchema.index({ status: 1, role: 1 });
+twitterAccountSchema.index({ 'today.lastResetDate': 1 });
+twitterAccountSchema.index({ adsPowerProfileId: 1 });
+twitterAccountSchema.index({ lastActiveDate: -1 });
+
 // ============================================
 // PROXY MODEL
 // ============================================
@@ -134,6 +141,10 @@ const proxySchema = new mongoose.Schema({
   
   notes: String
 }, { timestamps: true });
+
+// Indexes for proxy lookups
+proxySchema.index({ status: 1 });
+proxySchema.index({ type: 1, status: 1 });
 
 // ============================================
 // TWITTER LEAD MODEL
@@ -194,6 +205,14 @@ const twitterLeadSchema = new mongoose.Schema({
   notes: String
 }, { timestamps: true });
 
+// Indexes for lead tracking and queries
+twitterLeadSchema.index({ username: 1 });
+twitterLeadSchema.index({ sourceAccount: 1, createdAt: -1 });
+twitterLeadSchema.index({ chatAccount: 1, status: 1 });
+twitterLeadSchema.index({ status: 1, lastInteractionDate: -1 });
+twitterLeadSchema.index({ niche: 1, status: 1 });
+twitterLeadSchema.index({ converted: 1, convertedDate: -1 });
+
 // ============================================
 // AUTOMATION TASK MODEL
 // ============================================
@@ -235,6 +254,14 @@ const automationTaskSchema = new mongoose.Schema({
   leadId: { type: mongoose.Schema.Types.ObjectId, ref: 'TwitterLead' }
 }, { timestamps: true });
 
+// Indexes for task scheduling and health monitoring
+automationTaskSchema.index({ accountId: 1, status: 1, executedAt: -1 }); // Health checks
+automationTaskSchema.index({ accountId: 1, status: 1, scheduledFor: 1 }); // Task scheduler
+automationTaskSchema.index({ status: 1, scheduledFor: 1, priority: -1 }); // Queue processing
+automationTaskSchema.index({ leadId: 1 }); // Lead tracking
+automationTaskSchema.index({ updatedAt: -1 }); // Cleanup queries
+automationTaskSchema.index({ taskType: 1, status: 1 }); // Analytics
+
 // ============================================
 // ACCOUNT RESOURCE POOL MODEL
 // ============================================
@@ -249,6 +276,15 @@ const resourcePoolSchema = new mongoose.Schema({
     apiKey: String,
     balance: Number,
     lastChecked: Date
+  },
+  
+  // API Keys Storage
+  apiKeys: {
+    twoCaptcha: String,
+    ai: {
+      url: String,
+      key: String
+    }
   },
   
   // Profile Pictures (organized by niche)
@@ -328,6 +364,10 @@ const banDetectionLogSchema = new mongoose.Schema({
   notes: String
 }, { timestamps: true });
 
+// Indexes for ban detection logs
+banDetectionLogSchema.index({ accountId: 1, createdAt: -1 });
+banDetectionLogSchema.index({ severity: 1, createdAt: -1 });
+
 // ============================================
 // TWITTER COMMUNITY MODEL
 // ============================================
@@ -364,6 +404,11 @@ const twitterCommunitySchema = new mongoose.Schema({
   
   notes: String
 }, { timestamps: true });
+
+// Indexes for community tracking
+twitterCommunitySchema.index({ niche: 1, status: 1 });
+twitterCommunitySchema.index({ status: 1, totalLeadsGenerated: -1 });
+twitterCommunitySchema.index({ communityId: 1 });
 
 // ============================================
 // SYSTEM ANALYTICS MODEL
@@ -406,6 +451,9 @@ const systemAnalyticsSchema = new mongoose.Schema({
   accountsNeedingAttention: Number
 }, { timestamps: true });
 
+// Index for analytics queries
+systemAnalyticsSchema.index({ date: 1 }, { unique: true });
+
 // ============================================
 // TWITTER SESSION MODEL
 // ============================================
@@ -437,6 +485,10 @@ const twitterSessionSchema = new mongoose.Schema({
   lastActivityDate: Date,
   expiresAt: Date
 }, { timestamps: true });
+
+// Indexes for session management
+twitterSessionSchema.index({ accountId: 1 }, { unique: true });
+twitterSessionSchema.index({ status: 1, expiresAt: 1 });
 
 // ============================================
 // EXPORTS

@@ -184,5 +184,70 @@ router.post('/phone-service', async (req, res) => {
   }
 });
 
+// Set all API keys at once
+router.post('/api-keys', async (req, res) => {
+  try {
+    const { phoneApiKey, captchaApiKey, aiApiUrl, aiApiKey } = req.body;
+
+    let pool = await ResourcePool.findOne();
+    if (!pool) {
+      pool = await ResourcePool.create({});
+    }
+
+    // Save phone service key
+    if (phoneApiKey) {
+      pool.phoneService = {
+        provider: pool.phoneService?.provider || '5sim',
+        apiKey: phoneApiKey,
+        lastChecked: new Date()
+      };
+    }
+
+    // Save 2captcha key
+    if (captchaApiKey) {
+      if (!pool.apiKeys) pool.apiKeys = {};
+      pool.apiKeys.twoCaptcha = captchaApiKey;
+    }
+
+    // Save AI API settings
+    if (aiApiUrl || aiApiKey) {
+      if (!pool.apiKeys) pool.apiKeys = {};
+      if (!pool.apiKeys.ai) pool.apiKeys.ai = {};
+      if (aiApiUrl) pool.apiKeys.ai.url = aiApiUrl;
+      if (aiApiKey) pool.apiKeys.ai.key = aiApiKey;
+    }
+
+    await pool.save();
+
+    // Also update environment variables for immediate use
+    if (captchaApiKey) {
+      process.env.TWOCAPTCHA_API_KEY = captchaApiKey;
+    }
+    if (phoneApiKey) {
+      process.env.PHONE_SERVICE_API_KEY = phoneApiKey;
+    }
+    if (aiApiUrl) {
+      process.env.AI_API_URL = aiApiUrl;
+    }
+    if (aiApiKey) {
+      process.env.AI_API_KEY = aiApiKey;
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'All API keys saved successfully',
+      saved: {
+        phoneService: !!phoneApiKey,
+        twoCaptcha: !!captchaApiKey,
+        aiUrl: !!aiApiUrl,
+        aiKey: !!aiApiKey
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 

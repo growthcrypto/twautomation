@@ -1,5 +1,6 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
+const { incrementDailyCounter } = require('../../utils/account-helpers');
 const moment = require('moment-timezone');
 
 /**
@@ -166,11 +167,8 @@ class FollowUnfollowCampaign {
         state.actionsSinceBreak++;
         state.lastActionTime = Date.now();
 
-        // Update account stats
-        const account = await TwitterAccount.findById(state.accountId);
-        account.today.follows++;
-        account.lastActiveDate = new Date();
-        await account.save();
+        // Update account stats atomically (prevents race conditions)
+        await incrementDailyCounter(state.accountId, 'follows');
 
         // Schedule unfollow (if follow-back checker enabled)
         if (state.config.followBackChecker.enabled) {

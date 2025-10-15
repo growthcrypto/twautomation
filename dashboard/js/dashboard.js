@@ -24,6 +24,7 @@ function showTab(tabName) {
     if (tabName === 'accounts') loadAccounts();
     if (tabName === 'leads') loadLeads();
     if (tabName === 'dashboard') loadDashboard();
+    if (tabName === 'resources') loadAPIKeys();  // Load API keys when Resources tab opens
 }
 
 // System control
@@ -603,25 +604,79 @@ document.getElementById('apiKeysForm').addEventListener('submit', async (e) => {
     
     const formData = new FormData(e.target);
     
-    // Save phone service
-    if (formData.get('phoneApiKey')) {
-        await fetch(`${API_URL}/resources/phone-service`, {
+    try {
+        // Save all API keys at once
+        const response = await fetch(`${API_URL}/resources/api-keys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                provider: '5sim',
-                apiKey: formData.get('phoneApiKey')
+                phoneApiKey: formData.get('phoneApiKey'),
+                captchaApiKey: formData.get('captchaApiKey'),
+                aiApiUrl: formData.get('aiApiUrl'),
+                aiApiKey: formData.get('aiApiKey')
             })
         });
-    }
 
-    alert('✅ API keys saved!');
+        const result = await response.json();
+        
+        if (result.success) {
+            const savedKeys = [];
+            if (result.saved.phoneService) savedKeys.push('Phone Service');
+            if (result.saved.twoCaptcha) savedKeys.push('2Captcha');
+            if (result.saved.aiUrl || result.saved.aiKey) savedKeys.push('AI API');
+            
+            alert(`✅ API keys saved successfully!\n\nSaved: ${savedKeys.join(', ')}`);
+        } else {
+            alert(`❌ Error: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`❌ Error saving API keys: ${error.message}`);
+    }
 });
+
+// Load existing API keys
+async function loadAPIKeys() {
+    try {
+        const response = await fetch(`${API_URL}/resources`);
+        const result = await response.json();
+        
+        if (result.success && result.pool) {
+            // Load phone API key
+            if (result.pool.phoneService?.apiKey) {
+                const phoneInput = document.querySelector('input[name="phoneApiKey"]');
+                if (phoneInput) phoneInput.value = result.pool.phoneService.apiKey;
+            }
+            
+            // Load 2captcha API key
+            if (result.pool.apiKeys?.twoCaptcha) {
+                const captchaInput = document.querySelector('input[name="captchaApiKey"]');
+                if (captchaInput) captchaInput.value = result.pool.apiKeys.twoCaptcha;
+            }
+            
+            // Load AI API settings
+            if (result.pool.apiKeys?.ai?.url) {
+                const aiUrlInput = document.querySelector('input[name="aiApiUrl"]');
+                if (aiUrlInput) aiUrlInput.value = result.pool.apiKeys.ai.url;
+            }
+            if (result.pool.apiKeys?.ai?.key) {
+                const aiKeyInput = document.querySelector('input[name="aiApiKey"]');
+                if (aiKeyInput) aiKeyInput.value = result.pool.apiKeys.ai.key;
+            }
+            
+            console.log('✅ API keys loaded successfully');
+        } else {
+            console.log('ℹ️ No saved API keys found');
+        }
+    } catch (error) {
+        console.error('❌ Error loading API keys:', error);
+    }
+}
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
     loadAccounts();
+    // API keys will load when Resources tab is opened (not on page load)
     
     // Auto-refresh every 30 seconds
     setInterval(() => {

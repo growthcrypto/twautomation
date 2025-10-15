@@ -1,5 +1,6 @@
 const { AutomationTask, TwitterAccount } = require('../models');
 const twitterAutomation = require('./twitter-automation');
+const { canPerformAction } = require('../utils/account-helpers');
 const cron = require('node-cron');
 
 /**
@@ -165,31 +166,26 @@ class TaskScheduler {
    * Check if account can execute more tasks of this type today
    */
   async checkDailyLimits(account, taskType) {
-    // Reset daily stats if new day
-    const today = new Date().toDateString();
-    const lastReset = account.today.lastResetDate ? account.today.lastResetDate.toDateString() : null;
+    // Map task types to counter types
+    const actionTypeMap = {
+      'follow': 'follows',
+      'unfollow': 'unfollows',
+      'send_dm': 'dms',
+      'reply_dm': 'dms',
+      'like': 'likes',
+      'tweet': 'tweets'
+    };
 
-    if (today !== lastReset) {
-      // New day, reset counters
-      return true;
+    const actionType = actionTypeMap[taskType];
+    
+    if (!actionType) {
+      return true; // Unknown task type, allow it
     }
 
-    // Check limits based on task type
-    switch (taskType) {
-      case 'follow':
-        return account.today.follows < account.limits.maxFollowsPerDay;
-      case 'unfollow':
-        return account.today.unfollows < account.limits.maxUnfollowsPerDay;
-      case 'send_dm':
-      case 'reply_dm':
-        return account.today.dms < account.limits.maxDMsPerDay;
-      case 'like':
-        return account.today.likes < account.limits.maxLikesPerDay;
-      case 'tweet':
-        return account.today.tweets < account.limits.maxTweetsPerDay;
-      default:
-        return true;
-    }
+    // Use atomic check to prevent race conditions
+    const check = await canPerformAction(account._id, actionType);
+    
+    return check.canPerform;
   }
 
   /**

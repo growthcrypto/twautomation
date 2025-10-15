@@ -7,6 +7,7 @@ require('dotenv').config();
 // Services
 const healthMonitor = require('./services/health-monitor');
 const taskScheduler = require('./services/task-scheduler');
+const taskCleanup = require('./services/task-cleanup-service');
 const adsPowerController = require('./services/adspower-controller');
 
 // Routes
@@ -46,11 +47,48 @@ const connectDB = async () => {
   try {
     // Railway sets MONGO_URL, but we use MONGODB_URI - check both
     const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URL || 'mongodb://localhost:27017/twitter-automation';
-    console.log('🔄 Connecting to MongoDB...');
+    console.log('🔄 Connecting to MongoDB with connection pooling...');
     console.log('   MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
     console.log('   MONGO_URL:', process.env.MONGO_URL ? 'SET' : 'NOT SET');
-    await mongoose.connect(mongoUri);
-    console.log('✅ MongoDB connected successfully');
+    
+    // Connection pool configuration
+    const options = {
+      maxPoolSize: 50,        // Max 50 concurrent connections
+      minPoolSize: 10,        // Keep 10 connections ready
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      serverSelectionTimeoutMS: 10000, // Timeout after 10s if server not found
+      family: 4,              // Use IPv4, skip trying IPv6
+      maxIdleTimeMS: 60000,   // Close idle connections after 60s
+      retryWrites: true,      // Automatically retry failed writes
+      retryReads: true        // Automatically retry failed reads
+    };
+    
+    await mongoose.connect(mongoUri, options);
+    console.log('✅ MongoDB connected successfully (pool: 10-50 connections)');
+    
+    // Connection event handlers
+    mongoose.connection.on('connected', () => {
+      console.log('📡 Mongoose connected to MongoDB');
+    });
+
+    mongoose.connection.on('error', (err) => {
+      console.error('❌ Mongoose connection error:', err);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️  Mongoose disconnected from MongoDB');
+    });
+
+    // Monitor connection pool
+    if (process.env.NODE_ENV !== 'production') {
+      setInterval(() => {
+        const stats = mongoose.connection.client?.topology?.s?.pool?.stats;
+        if (stats) {
+          console.log(`📊 MongoDB Pool: ${stats.activeConnections} active, ${stats.availableConnections} available`);
+        }
+      }, 60000); // Every minute in development
+    }
+
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
     console.error('⚠️  App will start but database features will not work');
@@ -107,11 +145,35 @@ app.post('/api/accounts/:id/test-cookies', async (req, res) => {
 // Account Management
 app.get('/api/accounts', async (req, res) => {
   try {
-    const accounts = await TwitterAccount.find()
-      .populate('proxyId')
-      .sort({ createdDate: -1 });
+    const { page = 1, limit = 50, status, role, niche } = req.query;
+    
+    // Build filter
+    const filter = {};
+    if (status) filter.status = status;
+    if (role) filter.role = role;
+    if (niche) filter.niche = niche;
 
-    res.json({ success: true, accounts });
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await TwitterAccount.countDocuments(filter);
+
+    const accounts = await TwitterAccount.find(filter)
+      .populate('proxyId')
+      .sort({ createdDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    res.json({
+      success: true,
+      accounts,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+        hasMore: skip + accounts.length < total
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -142,7 +204,7 @@ app.post('/api/accounts', async (req, res) => {
   }
 });
 
-// Bulk account creation
+// Bulk account creation (with parallel processing)
 app.post('/api/accounts/bulk-create', async (req, res) => {
   try {
     const { count, role, niche, linkedChatUsername } = req.body;
@@ -151,33 +213,61 @@ app.post('/api/accounts/bulk-create', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Count must be between 1 and 50' });
     }
 
-    console.log(`🤖 Starting bulk creation of ${count} ${role} accounts...`);
+    console.log(`🤖 Starting bulk creation of ${count} ${role} accounts (parallel batches)...`);
 
     const accountCreator = require('./services/twitter-account-creator');
     const results = [];
+    
+    // Process in batches of 3 (parallel)
+    const BATCH_SIZE = 3;
+    const batches = Math.ceil(count / BATCH_SIZE);
 
-    for (let i = 0; i < count; i++) {
-      const result = await accountCreator.createAccount({
-        role,
-        niche,
-        linkedChatAccountUsername: linkedChatUsername
-      });
+    for (let batchNum = 0; batchNum < batches; batchNum++) {
+      const batchStart = batchNum * BATCH_SIZE;
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, count);
+      const batchCount = batchEnd - batchStart;
 
-      results.push(result);
+      console.log(`📦 Processing batch ${batchNum + 1}/${batches} (${batchCount} accounts)...`);
 
-      if (result.success) {
-        console.log(`✅ Created account ${i + 1}/${count}: ${result.username}`);
-      } else {
-        console.log(`❌ Failed account ${i + 1}/${count}: ${result.error}`);
+      // Create accounts in parallel within batch
+      const batchPromises = [];
+      for (let i = 0; i < batchCount; i++) {
+        batchPromises.push(
+          accountCreator.createAccount({
+            role,
+            niche,
+            linkedChatAccountUsername: linkedChatUsername
+          })
+        );
       }
 
-      // Delay between creations
-      if (i < count - 1) {
-        await new Promise(resolve => setTimeout(resolve, 60000)); // 1 min between accounts
+      // Wait for entire batch to complete
+      const batchResults = await Promise.allSettled(batchPromises);
+      
+      // Process results
+      batchResults.forEach((result, idx) => {
+        const accountNum = batchStart + idx + 1;
+        
+        if (result.status === 'fulfilled' && result.value.success) {
+          console.log(`✅ Created account ${accountNum}/${count}: ${result.value.username}`);
+          results.push(result.value);
+        } else {
+          const error = result.status === 'rejected' ? result.reason : result.value.error;
+          console.log(`❌ Failed account ${accountNum}/${count}: ${error}`);
+          results.push({ success: false, error: error.toString() });
+        }
+      });
+
+      // Delay between batches (not between individual accounts)
+      if (batchNum < batches - 1) {
+        console.log('   ⏸️  Waiting 30 seconds before next batch...');
+        await new Promise(resolve => setTimeout(resolve, 30000)); // 30 sec between batches
       }
     }
 
     const successCount = results.filter(r => r.success).length;
+
+    console.log(`✅ Bulk creation complete: ${successCount}/${count} successful`);
 
     res.json({
       success: true,
@@ -230,7 +320,7 @@ app.delete('/api/accounts/:id', async (req, res) => {
 // Leads & Conversions
 app.get('/api/leads', async (req, res) => {
   try {
-    const { status, niche, accountId } = req.query;
+    const { status, niche, accountId, page = 1, limit = 50 } = req.query;
     
     const filter = {};
     if (status) filter.status = status;
@@ -242,13 +332,28 @@ app.get('/api/leads', async (req, res) => {
       ];
     }
 
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await TwitterLead.countDocuments(filter);
+
     const leads = await TwitterLead.find(filter)
       .populate('sourceAccount', 'username role niche')
       .populate('chatAccount', 'username role')
       .sort({ createdAt: -1 })
-      .limit(100);
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
 
-    res.json({ success: true, leads });
+    res.json({
+      success: true,
+      leads,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+        hasMore: skip + leads.length < total
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -271,18 +376,33 @@ app.patch('/api/leads/:id', async (req, res) => {
 // Tasks
 app.get('/api/tasks', async (req, res) => {
   try {
-    const { status, accountId } = req.query;
+    const { status, accountId, page = 1, limit = 100 } = req.query;
     
     const filter = {};
     if (status) filter.status = status;
     if (accountId) filter.accountId = accountId;
 
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await AutomationTask.countDocuments(filter);
+
     const tasks = await AutomationTask.find(filter)
       .populate('accountId', 'username role niche')
       .sort({ priority: -1, scheduledFor: 1 })
-      .limit(200);
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
 
-    res.json({ success: true, tasks });
+    res.json({
+      success: true,
+      tasks,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+        hasMore: skip + tasks.length < total
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -336,8 +456,32 @@ app.post('/api/campaigns/mass-dm', async (req, res) => {
 // Communities
 app.get('/api/communities', async (req, res) => {
   try {
-    const communities = await TwitterCommunity.find().sort({ totalLeadsGenerated: -1 });
-    res.json({ success: true, communities });
+    const { page = 1, limit = 50, niche, status } = req.query;
+    
+    const filter = {};
+    if (niche) filter.niche = niche;
+    if (status) filter.status = status;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const total = await TwitterCommunity.countDocuments(filter);
+
+    const communities = await TwitterCommunity.find(filter)
+      .sort({ totalLeadsGenerated: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    res.json({
+      success: true,
+      communities,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit)),
+        hasMore: skip + communities.length < total
+      }
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -588,6 +732,9 @@ const startServer = async () => {
       console.warn('⚠️  AdsPower not available (expected on Railway)');
     });
 
+    // Start task cleanup service (runs daily)
+    taskCleanup.start();
+
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
     process.exit(1);
@@ -609,6 +756,7 @@ const gracefulShutdown = async (signal) => {
     
     healthMonitor.stop();
     taskScheduler.stop();
+    taskCleanup.stop();
     
     // Close all browsers
     await browserSessionManager.stop();
