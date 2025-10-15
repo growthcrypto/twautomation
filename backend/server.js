@@ -515,32 +515,8 @@ app.post('/api/proxies', async (req, res) => {
   }
 });
 
-// Resource Pool
-app.get('/api/resources', async (req, res) => {
-  try {
-    const resources = await ResourcePool.findOne();
-    res.json({ success: true, resources });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post('/api/resources', async (req, res) => {
-  try {
-    let resources = await ResourcePool.findOne();
-    
-    if (!resources) {
-      resources = await ResourcePool.create(req.body);
-    } else {
-      Object.assign(resources, req.body);
-      await resources.save();
-    }
-
-    res.json({ success: true, resources });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// Note: Resource Pool endpoints are in /routes/resource-api.js
+// Registered at line 110: app.use('/api/resources', resourceRoutes)
 
 // System Analytics
 app.get('/api/analytics/dashboard', async (req, res) => {

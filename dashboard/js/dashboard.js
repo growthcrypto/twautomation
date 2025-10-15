@@ -599,25 +599,47 @@ document.getElementById('bioTemplateForm').addEventListener('submit', async (e) 
 });
 
 // API Keys form
-document.getElementById('apiKeysForm').addEventListener('submit', async (e) => {
+document.getElementById('apiKeysForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const formData = new FormData(e.target);
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     
     try {
+        // Disable button while saving
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        }
+
+        const payload = {
+            phoneApiKey: formData.get('phoneApiKey'),
+            captchaApiKey: formData.get('captchaApiKey'),
+            aiApiUrl: formData.get('aiApiUrl'),
+            aiApiKey: formData.get('aiApiKey')
+        };
+        
+        console.log('💾 Saving API keys:', { 
+            phoneApiKey: payload.phoneApiKey ? '***' : 'empty',
+            captchaApiKey: payload.captchaApiKey ? '***' : 'empty',
+            aiApiUrl: payload.aiApiUrl || 'empty',
+            aiApiKey: payload.aiApiKey ? '***' : 'empty'
+        });
+
         // Save all API keys at once
         const response = await fetch(`${API_URL}/resources/api-keys`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                phoneApiKey: formData.get('phoneApiKey'),
-                captchaApiKey: formData.get('captchaApiKey'),
-                aiApiUrl: formData.get('aiApiUrl'),
-                aiApiKey: formData.get('aiApiKey')
-            })
+            body: JSON.stringify(payload)
         });
 
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const result = await response.json();
+        
+        console.log('✅ API keys save response:', result);
         
         if (result.success) {
             const savedKeys = [];
@@ -626,11 +648,21 @@ document.getElementById('apiKeysForm').addEventListener('submit', async (e) => {
             if (result.saved.aiUrl || result.saved.aiKey) savedKeys.push('AI API');
             
             alert(`✅ API keys saved successfully!\n\nSaved: ${savedKeys.join(', ')}`);
+            
+            // Reload keys to confirm
+            setTimeout(() => loadAPIKeys(), 500);
         } else {
             alert(`❌ Error: ${result.error}`);
         }
     } catch (error) {
+        console.error('❌ Error saving API keys:', error);
         alert(`❌ Error saving API keys: ${error.message}`);
+    } finally {
+        // Re-enable button
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Save API Keys';
+        }
     }
 });
 
