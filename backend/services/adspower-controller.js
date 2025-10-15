@@ -99,9 +99,22 @@ class AdsPowerController {
       if (response.data.code === 0) {
         const { ws, debug_port, webdriver } = response.data.data;
         
+        console.log(`🔗 Connecting to browser...`);
+        console.log(`   WebSocket:`, typeof ws === 'object' ? JSON.stringify(ws) : ws);
+        
+        // Get WebSocket URL (handle both string and object formats)
+        let wsEndpoint = ws;
+        if (typeof ws === 'object' && ws.puppeteer) {
+          wsEndpoint = ws.puppeteer;
+        } else if (typeof ws === 'object' && ws.selenium) {
+          wsEndpoint = ws.selenium;
+        }
+        
+        console.log(`   Using endpoint:`, wsEndpoint);
+        
         // Connect via Chrome DevTools Protocol
         const browser = await puppeteer.connect({
-          browserWSEndpoint: ws,
+          browserWSEndpoint: wsEndpoint,
           defaultViewport: null
         });
 
