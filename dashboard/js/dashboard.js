@@ -32,8 +32,16 @@ async function toggleSystem() {
     const btn = document.getElementById('systemToggle');
     
     try {
+        btn.disabled = true;
         const endpoint = systemRunning ? '/system/stop' : '/system/start';
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${systemRunning ? 'Stopping...' : 'Starting...'}`;
+        
         const response = await fetch(`${API_URL}${endpoint}`, { method: 'POST' });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
 
         if (data.success) {
@@ -41,12 +49,19 @@ async function toggleSystem() {
             updateSystemStatus();
             alert(systemRunning ? '✅ System started!' : '🛑 System stopped');
         } else {
-            alert('Error: ' + data.error);
+            throw new Error(data.error || 'Unknown error');
         }
     } catch (error) {
-        alert('Error: ' + error.message);
+        console.error('Toggle system error:', error);
+        alert('Error: ' + (error.message || 'Unknown error'));
+        updateSystemStatus(); // Restore button state
+    } finally {
+        btn.disabled = false;
     }
 }
+
+// Make globally available
+window.toggleSystem = toggleSystem;
 
 function updateSystemStatus() {
     const dot = document.getElementById('statusDot');
@@ -297,7 +312,7 @@ async function deleteAccount(id) {
         
         if (result.success) {
             alert('✅ Account deleted successfully');
-            loadAccounts();
+        loadAccounts();
         } else {
             alert('❌ Error: ' + (result.error || 'Failed to delete'));
         }
