@@ -714,6 +714,109 @@ app.post('/api/system/stop', async (req, res) => {
   }
 });
 
+// Action Coordinator Configuration
+app.get('/api/system/coordinator/config', (req, res) => {
+  try {
+    const actionCoordinator = require('./services/action-coordinator');
+    const config = actionCoordinator.getConfig();
+    
+    res.json({
+      success: true,
+      config
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/system/coordinator/status', (req, res) => {
+  try {
+    const actionCoordinator = require('./services/action-coordinator');
+    const status = actionCoordinator.getStatus();
+    const stats = actionCoordinator.getStatistics();
+    
+    res.json({
+      success: true,
+      status,
+      statistics: stats
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/system/coordinator/priority', (req, res) => {
+  try {
+    const actionCoordinator = require('./services/action-coordinator');
+    const { campaignName, priority } = req.body;
+    
+    if (!campaignName || priority === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing campaignName or priority' 
+      });
+    }
+    
+    actionCoordinator.setCampaignPriority(campaignName, priority);
+    
+    res.json({
+      success: true,
+      message: `Priority for "${campaignName}" set to ${priority}`,
+      config: actionCoordinator.getConfig()
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/system/coordinator/timeout', (req, res) => {
+  try {
+    const actionCoordinator = require('./services/action-coordinator');
+    const { campaignName, timeoutMs } = req.body;
+    
+    if (!campaignName || timeoutMs === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing campaignName or timeoutMs' 
+      });
+    }
+    
+    actionCoordinator.setCampaignTimeout(campaignName, timeoutMs);
+    
+    res.json({
+      success: true,
+      message: `Timeout for "${campaignName}" set to ${timeoutMs}ms`,
+      config: actionCoordinator.getConfig()
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/system/coordinator/max-queue', (req, res) => {
+  try {
+    const actionCoordinator = require('./services/action-coordinator');
+    const { maxLength } = req.body;
+    
+    if (maxLength === undefined) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing maxLength' 
+      });
+    }
+    
+    actionCoordinator.setMaxQueueLength(maxLength);
+    
+    res.json({
+      success: true,
+      message: `Max queue length set to ${maxLength}`,
+      config: actionCoordinator.getConfig()
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/api/system/status', async (req, res) => {
   try {
     const smartEngine = require('./services/smart-execution-engine');
