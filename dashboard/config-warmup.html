@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warmup Configuration - Twitter Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-black text-white">
+    <div class="min-h-screen p-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <a href="index.html" class="text-blue-400 hover:text-blue-300 mb-4 inline-block">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+            </a>
+            <h1 class="text-3xl font-bold">🌱 Warmup Configuration</h1>
+            <p class="text-gray-400 mt-2">Configure account warmup schedules to avoid bans</p>
+        </div>
+
+        <!-- Quick Start Templates -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4">Quick Start Templates</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer border border-gray-700" onclick="loadTemplate('conservative_30day')">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-green-400">Conservative</h3>
+                        <span class="text-xs bg-green-900 text-green-300 px-2 py-1 rounded">SAFEST</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-2">30 days • Ultra minimal activity</p>
+                    <p class="text-xs text-gray-500">Best for long-term accounts. Lowest ban risk.</p>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer border border-gray-700" onclick="loadTemplate('moderate_14day')">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-blue-400">Moderate</h3>
+                        <span class="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded">BALANCED</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-2">14 days • Balanced approach</p>
+                    <p class="text-xs text-gray-500">Good balance of speed and safety.</p>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-lg hover:bg-gray-750 cursor-pointer border border-gray-700" onclick="loadTemplate('aggressive_7day')">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-orange-400">Aggressive</h3>
+                        <span class="text-xs bg-orange-900 text-orange-300 px-2 py-1 rounded">FAST</span>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-2">7 days • Rapid warmup</p>
+                    <p class="text-xs text-gray-500">For testing. Higher ban risk.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Configuration Form -->
+        <div class="bg-gray-900 border border-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-bold mb-4">Custom Warmup Schedule</h2>
+            
+            <form id="warmupForm" class="space-y-6">
+                <!-- Basic Settings -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Campaign Name</label>
+                    <input type="text" name="name" required 
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white"
+                        placeholder="My Custom Warmup">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Total Warmup Days</label>
+                        <input type="number" id="totalDays" value="14" min="1" max="60"
+                            class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white"
+                            onchange="generateDaySchedule()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Enabled</label>
+                        <select name="enabled" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Active Hours -->
+                <div>
+                    <h3 class="text-lg font-medium mb-3">Active Hours</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Start Time</label>
+                            <input type="time" name="spreadActionsOverHours.start" value="08:00"
+                                class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">End Time</label>
+                            <input type="time" name="spreadActionsOverHours.end" value="22:00"
+                                class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Schedule Preview -->
+                <div>
+                    <h3 class="text-lg font-medium mb-3">Daily Schedule</h3>
+                    <div id="schedulePreview" class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="flex gap-4">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded font-medium">
+                        <i class="fas fa-save mr-2"></i>Save Warmup Config
+                    </button>
+                    <button type="button" onclick="location.href='index.html'" 
+                        class="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin + '/api';
+        let currentSchedule = [];
+        let templates = {};
+
+        // Load templates on page load
+        async function loadTemplates() {
+            try {
+                const response = await fetch(`${API_URL}/configs/warmup/templates/presets`);
+                const data = await response.json();
+                if (data.success) {
+                    templates = data.templates;
+                }
+            } catch (error) {
+                console.error('Error loading templates:', error);
+            }
+        }
+
+        // Load a template
+        async function loadTemplate(templateKey) {
+            const template = templates[templateKey];
+            if (!template) {
+                alert('Template not found');
+                return;
+            }
+
+            // Populate form
+            document.querySelector('input[name="name"]').value = template.name;
+            document.getElementById('totalDays').value = template.totalDays;
+            
+            // Load schedule
+            currentSchedule = template.schedule;
+            renderSchedule();
+
+            // Scroll to form
+            document.getElementById('warmupForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Generate default schedule based on total days
+        function generateDaySchedule() {
+            const totalDays = parseInt(document.getElementById('totalDays').value);
+            currentSchedule = [];
+
+            for (let day = 1; day <= totalDays; day++) {
+                // Calculate progressive increase (linear ramp)
+                const progress = day / totalDays;
+                const minLikes = Math.floor(5 + (progress * 95));  // 5 → 100
+                const maxLikes = Math.floor(10 + (progress * 115)); // 10 → 125
+                const minFollows = Math.floor(0 + (progress * 90));  // 0 → 90
+                const maxFollows = Math.floor(0 + (progress * 110)); // 0 → 110
+
+                currentSchedule.push({
+                    day,
+                    actions: {
+                        scrollFeed: {
+                            min: Math.floor(2 + (progress * 12)),
+                            max: Math.floor(4 + (progress * 14)),
+                            duration: {
+                                min: Math.floor(60 + (progress * 140)),
+                                max: Math.floor(120 + (progress * 240))
+                            }
+                        },
+                        likes: { min: minLikes, max: maxLikes },
+                        follows: { min: minFollows, max: maxFollows },
+                        dms: { min: 0, max: 0 },
+                        tweets: { min: 0, max: 0 },
+                        profileViews: { min: 0, max: 0 }
+                    }
+                });
+            }
+
+            renderSchedule();
+        }
+
+        // Render schedule preview
+        function renderSchedule() {
+            const preview = document.getElementById('schedulePreview');
+            
+            if (currentSchedule.length === 0) {
+                preview.innerHTML = '<p class="text-gray-500">Generate or load a template to see schedule</p>';
+                return;
+            }
+
+            preview.innerHTML = currentSchedule.map(day => `
+                <div class="bg-gray-800 p-3 rounded border border-gray-700">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-medium">Day ${day.day}</h4>
+                        <button type="button" onclick="editDay(${day.day})" class="text-blue-400 text-sm hover:text-blue-300">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-xs text-gray-400">
+                        <div>
+                            <span class="text-gray-500">Scroll:</span> ${day.actions.scrollFeed?.min || 0}-${day.actions.scrollFeed?.max || 0}
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Likes:</span> ${day.actions.likes?.min || 0}-${day.actions.likes?.max || 0}
+                        </div>
+                        <div>
+                            <span class="text-gray-500">Follows:</span> ${day.actions.follows?.min || 0}-${day.actions.follows?.max || 0}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Edit individual day
+        function editDay(dayNumber) {
+            const day = currentSchedule.find(d => d.day === dayNumber);
+            if (!day) return;
+
+            const newLikesMin = prompt(`Day ${dayNumber} - Likes Min:`, day.actions.likes.min);
+            const newLikesMax = prompt(`Day ${dayNumber} - Likes Max:`, day.actions.likes.max);
+            const newFollowsMin = prompt(`Day ${dayNumber} - Follows Min:`, day.actions.follows.min);
+            const newFollowsMax = prompt(`Day ${dayNumber} - Follows Max:`, day.actions.follows.max);
+
+            if (newLikesMin !== null) day.actions.likes.min = parseInt(newLikesMin);
+            if (newLikesMax !== null) day.actions.likes.max = parseInt(newLikesMax);
+            if (newFollowsMin !== null) day.actions.follows.min = parseInt(newFollowsMin);
+            if (newFollowsMax !== null) day.actions.follows.max = parseInt(newFollowsMax);
+
+            renderSchedule();
+        }
+
+        // Submit form
+        document.getElementById('warmupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const data = {
+                name: formData.get('name'),
+                enabled: formData.get('enabled') === 'true',
+                schedule: currentSchedule,
+                spreadActionsOverHours: {
+                    start: formData.get('spreadActionsOverHours.start'),
+                    end: formData.get('spreadActionsOverHours.end')
+                },
+                breaks: {
+                    frequency: { min: 3, max: 6 },
+                    duration: { min: 30, max: 120 }
+                }
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/configs/warmup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Warmup configuration saved!');
+                    setTimeout(() => location.href = 'index.html', 1000);
+                } else {
+                    alert('❌ Error: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Error: ' + error.message);
+            }
+        });
+
+        // Initialize
+        loadTemplates();
+        generateDaySchedule();
+    </script>
+</body>
+</html>
+

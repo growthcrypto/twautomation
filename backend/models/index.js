@@ -506,6 +506,9 @@ const {
   RandomActivityConfig
 } = require('./campaign-configs');
 
+// Import testing cohort
+const TestingCohort = require('./testing-cohort');
+
 module.exports = {
   TwitterAccount,
   Proxy,
@@ -520,6 +523,7 @@ module.exports = {
   MassDMConfig,
   AIChatConfig,
   WarmupConfig,
-  RandomActivityConfig
+  RandomActivityConfig,
+  TestingCohort
 };
 
