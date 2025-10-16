@@ -1,5 +1,6 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
+const liveFollowEngine = require('../live-follow-engine');
 const { incrementDailyCounter } = require('../../utils/account-helpers');
 const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
@@ -147,49 +148,85 @@ class FollowUnfollowCampaign {
   }
 
   /**
-   * Execute a single follow action
+   * Execute follow session (batch of follows with live scrolling)
    */
   async executeFollowAction(state) {
     try {
-      // Get target user to follow
-      const target = await this.getNextTarget(state);
+      // Select source based on weights
+      const source = this.selectSourceByWeight(state.config.targetSources);
       
-      if (!target) {
-        console.log(`⚠️  No more targets available`);
+      if (!source) {
+        console.log(`⚠️  No target sources configured`);
         return;
       }
 
-      // Execute follow
-      const result = await twitterAutomationEngine.follow(
-        state.accountId,
-        target,
-        state.config
+      // Calculate how many to follow in this session
+      const account = await TwitterAccount.findById(state.accountId);
+      const remainingToday = state.config.maxFollowsPerDay - (account.today.follows || 0);
+      
+      if (remainingToday <= 0) {
+        console.log(`📊 Daily follow limit reached`);
+        return;
+      }
+
+      // Follow 3-8 users per session (more human-like than one at a time)
+      const batchSize = Math.min(
+        this.randomBetween(3, 8),
+        remainingToday
       );
 
-      if (result.success) {
+      console.log(`🎯 Starting follow session: ${batchSize} follows from ${source.type}`);
+
+      let result;
+
+      switch (source.type) {
+        case 'community':
+          result = await liveFollowEngine.followFromCommunity(
+            state.accountId,
+            source.value,
+            batchSize,
+            {
+              ...state.config,
+              randomSkipProbability: state.config.humanization?.randomSkip || 20,
+              inspectProfileProbability: state.config.humanization?.inspectProfile || 30,
+              delayBetweenFollows: state.config.delayBetweenFollows || { min: 3, max: 8 }
+            }
+          );
+          break;
+
+        case 'hashtag':
+          result = await liveFollowEngine.followFromHashtag(
+            state.accountId,
+            source.value,
+            batchSize,
+            {
+              ...state.config,
+              randomSkipProbability: state.config.humanization?.randomSkip || 20,
+              delayBetweenFollows: state.config.delayBetweenFollows || { min: 3, max: 8 }
+            }
+          );
+          break;
+
+        default:
+          console.log(`⚠️  Unknown source type: ${source.type}`);
+          return;
+      }
+
+      if (result.success && result.followedCount > 0) {
         // Update stats
-        state.actionsToday++;
-        state.actionsSinceBreak++;
+        state.actionsToday += result.followedCount;
+        state.actionsSinceBreak += result.followedCount;
         state.lastActionTime = Date.now();
 
-        // Update account stats atomically (prevents race conditions)
-        await incrementDailyCounter(state.accountId, 'follows');
-
-        // Schedule unfollow (if follow-back checker enabled)
-        if (state.config.followBackChecker.enabled) {
-          await AutomationTask.create({
-            taskType: 'unfollow',
-            accountId: state.accountId,
-            targetUsername: target,
-            scheduledFor: new Date(Date.now() + state.config.followBackChecker.checkAfterDays * 24 * 60 * 60 * 1000),
-            priority: 3
-          });
+        // Update account stats
+        for (let i = 0; i < result.followedCount; i++) {
+          await incrementDailyCounter(state.accountId, 'follows');
         }
 
-        console.log(`✅ Follow action successful (${state.actionsToday} today)`);
+        console.log(`✅ Follow session complete (${result.followedCount} follows, ${state.actionsToday} today)`);
 
       } else {
-        console.log(`⚠️  Follow action failed: ${result.reason || result.error}`);
+        console.log(`⚠️  Follow session failed or found no users`);
       }
 
     } catch (error) {
