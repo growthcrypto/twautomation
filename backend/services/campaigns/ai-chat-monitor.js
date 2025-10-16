@@ -1,5 +1,6 @@
 const { AIChatConfig, TwitterAccount, TwitterLead } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
+const actionCoordinator = require('../action-coordinator');
 const axios = require('axios');
 const moment = require('moment-timezone');
 
@@ -59,8 +60,12 @@ class AIChatMonitor {
         return;
       }
 
-      // Check for new DMs
-      await this.checkAndRespondToDMs(state);
+      // Check for new DMs with lock (prevents race conditions with other campaigns)
+      await actionCoordinator.executeWithLock(
+        state.accountId,
+        'AI Chat Monitor',
+        async () => await this.checkAndRespondToDMs(state)
+      );
 
       // Next check in 30-60 seconds
       const nextCheck = this.randomBetween(30, 60) * 1000;

@@ -22,7 +22,10 @@ function showTab(tabName) {
 
     // Load data for this tab
     if (tabName === 'accounts') loadAccounts();
-    if (tabName === 'leads') loadLeads();
+    if (tabName === 'leads') {
+        loadLeads();
+        loadLeadsAnalytics();
+    }
     if (tabName === 'dashboard') loadDashboard();
     if (tabName === 'resources') loadAPIKeys();  // Load API keys when Resources tab opens
 }
@@ -1122,9 +1125,257 @@ function clearLogs() {
     document.getElementById('logsContent').innerHTML = '<div class="text-gray-500">Logs cleared. New logs will appear here...</div>';
 }
 
+// ============================================
+// LEADS MANAGEMENT
+// ============================================
+
+async function loadLeadsAnalytics() {
+    try {
+        const timeframe = document.getElementById('timeframeFilter').value;
+        const response = await fetch(`${API_URL}/leads/analytics/overview?timeframe=${timeframe}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const { overview, rates } = data.analytics;
+            
+            // Update analytics cards
+            document.getElementById('totalLeads').textContent = overview.totalLeads;
+            document.getElementById('totalConversions').textContent = overview.conversions;
+            document.getElementById('totalRevenue').textContent = `$${overview.totalRevenue}`;
+            document.getElementById('replyRate').textContent = `${rates.replyRate}%`;
+            
+            document.getElementById('conversionRate').textContent = `${rates.conversionRate}% conversion rate`;
+            document.getElementById('avgRevenue').textContent = `$${rates.avgRevenuePerConversion} avg per conversion`;
+            document.getElementById('repliesReceived').textContent = `${overview.repliesReceived} replies received`;
+        }
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+    }
+}
+
+async function loadLeads() {
+    try {
+        const statusFilter = document.getElementById('statusFilter').value;
+        const queryParams = new URLSearchParams();
+        if (statusFilter) queryParams.set('status', statusFilter);
+        queryParams.set('limit', '100');
+        
+        const response = await fetch(`${API_URL}/leads?${queryParams}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error);
+        }
+        
+        const tbody = document.getElementById('leadsTableBody');
+        
+        if (data.leads.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-gray-500">No leads found</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = data.leads.map(lead => {
+            const statusColors = {
+                new_lead: 'bg-gray-700 text-gray-300',
+                dm_sent: 'bg-blue-700 text-blue-200',
+                in_conversation: 'bg-purple-700 text-purple-200',
+                link_sent: 'bg-orange-700 text-orange-200',
+                converted: 'bg-green-700 text-green-200',
+                ghosted: 'bg-gray-600 text-gray-400',
+                not_interested: 'bg-red-700 text-red-200'
+            };
+            
+            const statusLabels = {
+                new_lead: 'New Lead',
+                dm_sent: 'DM Sent',
+                in_conversation: 'In Conversation',
+                link_sent: 'Link Sent',
+                converted: '🎉 Converted',
+                ghosted: 'Ghosted',
+                not_interested: 'Not Interested'
+            };
+            
+            const statusClass = statusColors[lead.status] || 'bg-gray-700 text-gray-300';
+            const statusLabel = statusLabels[lead.status] || lead.status;
+            
+            return `
+                <tr class="border-b border-gray-800 hover:bg-gray-800 transition">
+                    <td class="py-3">
+                        <a href="https://twitter.com/${lead.username}" target="_blank" class="text-blue-400 hover:text-blue-300">
+                            @${lead.username}
+                        </a>
+                    </td>
+                    <td class="py-3">
+                        <span class="px-2 py-1 rounded text-xs ${statusClass}">
+                            ${statusLabel}
+                        </span>
+                    </td>
+                    <td class="py-3 text-sm">
+                        ${lead.sourceAccount?.username ? `@${lead.sourceAccount.username}` : '-'}
+                    </td>
+                    <td class="py-3 text-sm">
+                        ${lead.chatAccount?.username ? `@${lead.chatAccount.username}` : '-'}
+                    </td>
+                    <td class="py-3 text-center">${lead.messageCount || 0}</td>
+                    <td class="py-3 text-center">
+                        ${lead.revenue ? `<span class="text-green-400 font-medium">$${lead.revenue}</span>` : '-'}
+                    </td>
+                    <td class="py-3 text-sm text-gray-400">
+                        ${formatDate(lead.lastInteractionDate || lead.firstContactDate)}
+                    </td>
+                    <td class="py-3">
+                        <div class="flex gap-2">
+                            ${lead.status !== 'converted' ? `
+                                <button onclick="markAsConverted('${lead._id}')" 
+                                    class="text-green-400 hover:text-green-300 text-sm px-2 py-1 rounded hover:bg-gray-700"
+                                    title="Mark as converted">
+                                    <i class="fas fa-check-circle"></i>
+                                </button>
+                            ` : ''}
+                            <button onclick="updateLeadStatus('${lead._id}', '${lead.status}')" 
+                                class="text-blue-400 hover:text-blue-300 text-sm px-2 py-1 rounded hover:bg-gray-700"
+                                title="Change status">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteLead('${lead._id}')" 
+                                class="text-red-400 hover:text-red-300 text-sm px-2 py-1 rounded hover:bg-gray-700"
+                                title="Delete lead">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading leads:', error);
+        alert('❌ Error loading leads: ' + error.message);
+    }
+}
+
+async function markAsConverted(leadId) {
+    const revenue = prompt('💰 Enter revenue amount (e.g., 9.99):');
+    
+    if (revenue === null) return; // Cancelled
+    
+    const revenueNum = parseFloat(revenue) || 0;
+    
+    if (revenueNum <= 0) {
+        alert('⚠️ Please enter a valid revenue amount');
+        return;
+    }
+    
+    const ofUsername = prompt('(Optional) Enter their OnlyFans username:');
+    
+    try {
+        const response = await fetch(`${API_URL}/leads/${leadId}/convert`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                revenue: revenueNum,
+                ofUsername: ofUsername || undefined
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`🎉 Lead marked as converted! Revenue: $${revenueNum}`);
+            loadLeads();
+            loadLeadsAnalytics();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error marking as converted:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function updateLeadStatus(leadId, currentStatus) {
+    const statuses = [
+        { value: 'new_lead', label: 'New Lead' },
+        { value: 'dm_sent', label: 'DM Sent' },
+        { value: 'in_conversation', label: 'In Conversation' },
+        { value: 'link_sent', label: 'Link Sent' },
+        { value: 'converted', label: 'Converted' },
+        { value: 'ghosted', label: 'Ghosted' },
+        { value: 'not_interested', label: 'Not Interested' }
+    ];
+    
+    let message = 'Select new status:\n\n';
+    statuses.forEach((s, i) => {
+        message += `${i + 1}. ${s.label}${s.value === currentStatus ? ' (current)' : ''}\n`;
+    });
+    
+    const choice = prompt(message + '\nEnter number (1-7):');
+    
+    if (!choice) return;
+    
+    const index = parseInt(choice) - 1;
+    if (index < 0 || index >= statuses.length) {
+        alert('Invalid choice');
+        return;
+    }
+    
+    const newStatus = statuses[index].value;
+    
+    try {
+        const response = await fetch(`${API_URL}/leads/${leadId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ Status updated to: ${statuses[index].label}`);
+            loadLeads();
+            loadLeadsAnalytics();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error updating status:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function deleteLead(leadId) {
+    if (!confirm('⚠️ Are you sure you want to delete this lead? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/leads/${leadId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Lead deleted');
+            loadLeads();
+            loadLeadsAnalytics();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error deleting lead:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
 // Make globally available
 window.toggleLogs = toggleLogs;
 window.clearLogs = clearLogs;
+window.loadLeads = loadLeads;
+window.loadLeadsAnalytics = loadLeadsAnalytics;
+window.markAsConverted = markAsConverted;
+window.updateLeadStatus = updateLeadStatus;
+window.deleteLead = deleteLead;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {

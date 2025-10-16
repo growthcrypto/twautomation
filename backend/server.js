@@ -14,6 +14,7 @@ const adsPowerController = require('./services/adspower-controller');
 const extensionRoutes = require('./routes/extension-api');
 const configRoutes = require('./routes/config-api');
 const resourceRoutes = require('./routes/resource-api');
+const leadsRoutes = require('./routes/leads-api');
 
 // Models
 const {
@@ -117,6 +118,9 @@ app.use('/api/configs', configRoutes);
 
 // Resource API
 app.use('/api/resources', resourceRoutes);
+
+// Leads API
+app.use('/api/leads', leadsRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

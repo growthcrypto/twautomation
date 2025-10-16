@@ -1,5 +1,6 @@
 const { MassDMConfig, TwitterAccount, TwitterLead } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
+const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
 
 /**
@@ -90,8 +91,12 @@ class MassDMCampaign {
         }
       }
 
-      // Execute DM
-      await this.executeDMAction(state);
+      // Execute DM with lock (prevents race conditions with other campaigns)
+      await actionCoordinator.executeWithLock(
+        state.accountId,
+        'Mass DM',
+        async () => await this.executeDMAction(state)
+      );
 
       // Check for break
       if (state.config.breaks.enabled && state.dmsSinceBreak >= state.config.breaks.afterActions) {

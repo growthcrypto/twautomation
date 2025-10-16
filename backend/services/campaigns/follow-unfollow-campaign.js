@@ -1,6 +1,7 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
 const { incrementDailyCounter } = require('../../utils/account-helpers');
+const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
 
 /**
@@ -115,8 +116,12 @@ class FollowUnfollowCampaign {
         }
       }
 
-      // Execute follow action
-      await this.executeFollowAction(state);
+      // Execute follow action with lock (prevents race conditions with other campaigns)
+      await actionCoordinator.executeWithLock(
+        state.accountId,
+        'Follow/Unfollow',
+        async () => await this.executeFollowAction(state)
+      );
 
       // Check if should take break
       if (state.config.breaks.enabled) {
