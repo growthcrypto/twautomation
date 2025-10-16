@@ -58,40 +58,27 @@ const connectDB = async () => {
     // Connection pool configuration
     const options = {
       maxPoolSize: 50,        // Max 50 concurrent connections
-      minPoolSize: 10,        // Keep 10 connections ready
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      minPoolSize: 5,         // Keep 5 connections ready (reduced from 10)
+      socketTimeoutMS: 300000, // 5 minutes (increased to prevent premature closes)
       serverSelectionTimeoutMS: 10000, // Timeout after 10s if server not found
       family: 4,              // Use IPv4, skip trying IPv6
-      maxIdleTimeMS: 60000,   // Close idle connections after 60s
+      // maxIdleTimeMS removed - was causing constant reconnection loops
       retryWrites: true,      // Automatically retry failed writes
       retryReads: true        // Automatically retry failed reads
     };
     
     await mongoose.connect(mongoUri, options);
     console.log('✅ MongoDB connected successfully (pool: 10-50 connections)');
-    
-    // Connection event handlers
-    mongoose.connection.on('connected', () => {
-      console.log('📡 Mongoose connected to MongoDB');
-    });
 
-    mongoose.connection.on('error', (err) => {
-      console.error('❌ Mongoose connection error:', err);
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️  Mongoose disconnected from MongoDB');
-    });
-
-    // Monitor connection pool
-    if (process.env.NODE_ENV !== 'production') {
-      setInterval(() => {
-        const stats = mongoose.connection.client?.topology?.s?.pool?.stats;
-        if (stats) {
-          console.log(`📊 MongoDB Pool: ${stats.activeConnections} active, ${stats.availableConnections} available`);
-        }
-      }, 60000); // Every minute in development
-    }
+    // Monitor connection pool (disabled - causes spam)
+    // if (process.env.NODE_ENV !== 'production') {
+    //   setInterval(() => {
+    //     const stats = mongoose.connection.client?.topology?.s?.pool?.stats;
+    //     if (stats) {
+    //       console.log(`📊 MongoDB Pool: ${stats.activeConnections} active, ${stats.availableConnections} available`);
+    //     }
+    //   }, 60000);
+    // }
 
   } catch (error) {
     console.error('❌ MongoDB connection error:', error.message);
