@@ -893,6 +893,14 @@ const startServer = async () => {
     // IMPORTANT: Connect to MongoDB FIRST (Railway needs this)
     await connectDB();
 
+    // Configure action coordinator (priority queue system)
+    try {
+      const { configureCoordinator } = require('./config/coordinator-config');
+      configureCoordinator();
+    } catch (error) {
+      console.log('⚠️  Coordinator config not found, using defaults');
+    }
+
     // Start server AFTER database is connected
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`✅ HTTP Server listening on port ${PORT}`);
