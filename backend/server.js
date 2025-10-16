@@ -826,6 +826,21 @@ app.get('/api/system/status', async (req, res) => {
   }
 });
 
+// Clear scraping cache
+app.post('/api/system/clear-cache', (req, res) => {
+  try {
+    const twitterAutomationEngine = require('./services/twitter-automation-engine');
+    twitterAutomationEngine.clearScrapingCache();
+    
+    res.json({
+      success: true,
+      message: 'Scraping cache cleared. Next scrape will be fresh.'
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Health check endpoint (for Railway/Docker)
 app.get('/health', (req, res) => {
   res.status(200).json({

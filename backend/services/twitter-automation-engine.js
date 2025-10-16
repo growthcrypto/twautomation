@@ -537,37 +537,108 @@ class TwitterAutomationEngine {
       });
       await this.humanDelay(3000, 5000);
 
+      // Wait for user cells to appear
+      try {
+        await page.waitForSelector('[data-testid="UserCell"]', { timeout: 10000 });
+      } catch {
+        console.log('⚠️  No users found on members page, trying alternative selectors...');
+      }
+
       // Scroll and collect usernames
       const usernames = new Set();
       let scrolls = 0;
       const maxScrolls = Math.ceil((limit * 3) / 10); // Scrape 3x more for cache
 
       while (usernames.size < limit * 3 && scrolls < maxScrolls) {
-        // Get usernames from current view
-        const users = await page.$$eval('[data-testid="User-Name"] a[href^="/"]', links =>
-          links.map(link => link.getAttribute('href').replace('/', ''))
-            .filter(username => !username.includes('/'))
-        );
+        // Try multiple selectors (Twitter changes these frequently)
+        let users = [];
+        
+        try {
+          // Method 1: UserCell with User-Name
+          users = await page.$$eval('[data-testid="UserCell"] [data-testid="User-Name"] a[href^="/"]', links =>
+            links.map(link => link.getAttribute('href').replace('/', ''))
+              .filter(username => username && !username.includes('/') && !username.includes('?'))
+          );
+        } catch (e) {
+          console.log('⚠️  UserCell selector failed, trying alternative...');
+        }
 
+        // Method 2: Try cellInnerDiv (alternative structure)
+        if (users.length === 0) {
+          try {
+            users = await page.$$eval('[data-testid="cellInnerDiv"] a[href^="/"][role="link"]', links =>
+              links.map(link => {
+                const href = link.getAttribute('href');
+                const match = href.match(/^\/([^\/\?]+)/);
+                return match ? match[1] : null;
+              })
+              .filter(username => username && 
+                                  !username.startsWith('i/') && 
+                                  !username.startsWith('hashtag/') &&
+                                  !username.startsWith('search'))
+            );
+          } catch (e) {
+            console.log('⚠️  Alternative selector also failed');
+          }
+        }
+
+        console.log(`📝 Found ${users.length} users on page (scroll ${scrolls + 1}/${maxScrolls})`);
         users.forEach(u => usernames.add(u));
 
         // Human-like scrolling (not uniform)
         await this.humanScroll(page);
 
         scrolls++;
+        
+        // If we haven't found any users after 3 scrolls, something is wrong
+        if (scrolls >= 3 && usernames.size === 0) {
+          console.log('⚠️  No users found after 3 scrolls, page may have different structure');
+          break;
+        }
       }
 
       const allUsers = Array.from(usernames);
 
-      // Cache the results
+      // If no users found from /members, try the main community page
+      if (allUsers.length === 0) {
+        console.log('⚠️  Members page returned 0 users, trying main community feed...');
+        
+        await page.goto(`https://twitter.com/i/communities/${communityId}`, { 
+          waitUntil: 'networkidle2',
+          timeout: 30000 
+        });
+        await this.humanDelay(2000, 3000);
+        
+        // Try to get users from tweet authors
+        for (let i = 0; i < 3; i++) {
+          const tweetAuthors = await page.$$eval('article [data-testid="User-Name"] a[href^="/"]', links =>
+            links.map(link => link.getAttribute('href').replace('/', ''))
+              .filter(username => username && !username.includes('/'))
+          );
+          
+          tweetAuthors.forEach(u => usernames.add(u));
+          console.log(`📝 Found ${tweetAuthors.length} users from feed (scroll ${i + 1}/3)`);
+          
+          await this.humanScroll(page);
+          await this.humanDelay(1000, 2000);
+        }
+      }
+
+      const finalUsers = Array.from(usernames);
+
+      // Cache the results (even if empty, to avoid repeated scraping)
       this.scrapedUsersCache.set(cacheKey, {
-        users: allUsers,
+        users: finalUsers,
         timestamp: Date.now()
       });
 
-      console.log(`✅ Scraped ${allUsers.length} users from community (cached for 1 hour)`);
+      if (finalUsers.length === 0) {
+        console.log(`⚠️  Scraped 0 users from community ${communityId} - check if community exists or is accessible`);
+      } else {
+        console.log(`✅ Scraped ${finalUsers.length} users from community (cached for 1 hour)`);
+      }
 
-      const shuffled = [...allUsers].sort(() => 0.5 - Math.random());
+      const shuffled = [...finalUsers].sort(() => 0.5 - Math.random());
       return { success: true, usernames: shuffled.slice(0, limit), cached: false };
 
     } catch (error) {
@@ -600,26 +671,42 @@ class TwitterAutomationEngine {
 
       const searchQuery = encodeURIComponent(`#${hashtag}`);
       await page.goto(`https://twitter.com/search?q=${searchQuery}&f=live`, { 
-        waitUntil: 'networkidle2' 
+        waitUntil: 'networkidle2',
+        timeout: 30000
       });
       await this.humanDelay(3000, 5000);
+      
+      // Wait for tweets to load
+      try {
+        await page.waitForSelector('article', { timeout: 10000 });
+      } catch {
+        console.log('⚠️  No tweets found for hashtag');
+      }
 
       const usernames = new Set();
       let scrolls = 0;
       const maxScrolls = Math.ceil((limit * 3) / 10); // Scrape 3x more for cache
 
       while (usernames.size < limit * 3 && scrolls < maxScrolls) {
-        const users = await page.$$eval('[data-testid="User-Name"] a[href^="/"]', links =>
+        // Extract usernames from tweets (improved selector)
+        const users = await page.$$eval('article [data-testid="User-Name"] a[href^="/"]', links =>
           links.map(link => link.getAttribute('href').replace('/', ''))
-            .filter(username => !username.includes('/'))
+            .filter(username => username && !username.includes('/') && !username.includes('?'))
         );
 
+        console.log(`📝 Found ${users.length} users from tweets (scroll ${scrolls + 1}/${maxScrolls})`);
         users.forEach(u => usernames.add(u));
 
         // Human-like scrolling (not uniform)
         await this.humanScroll(page);
 
         scrolls++;
+        
+        // If no users after 3 scrolls, stop trying
+        if (scrolls >= 3 && usernames.size === 0) {
+          console.log(`⚠️  No users found for hashtag #${hashtag} after 3 scrolls`);
+          break;
+        }
       }
 
       const allUsers = Array.from(usernames);
@@ -820,6 +907,16 @@ class TwitterAutomationEngine {
   async humanDelay(min, max) {
     const delay = this.randomBetween(min, max);
     await new Promise(resolve => setTimeout(resolve, delay));
+  }
+
+  /**
+   * Clear scraping cache (useful when scrapers return 0 users)
+   */
+  clearScrapingCache() {
+    const count = this.scrapedUsersCache.size;
+    this.scrapedUsersCache.clear();
+    console.log(`🧹 Cleared scraping cache (${count} entries removed)`);
+    return { cleared: count };
   }
 }
 
