@@ -23,6 +23,18 @@ router.get('/follow-unfollow', async (req, res) => {
   }
 });
 
+router.get('/follow-unfollow/:id', async (req, res) => {
+  try {
+    const config = await FollowUnfollowConfig.findById(req.params.id).populate('accountIds', 'username role');
+    if (!config) {
+      return res.status(404).json({ success: false, error: 'Config not found' });
+    }
+    res.json({ success: true, config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/follow-unfollow', async (req, res) => {
   try {
     const config = await FollowUnfollowConfig.create(req.body);
@@ -67,6 +79,18 @@ router.get('/mass-dm', async (req, res) => {
   }
 });
 
+router.get('/mass-dm/:id', async (req, res) => {
+  try {
+    const config = await MassDMConfig.findById(req.params.id).populate('accountIds', 'username role');
+    if (!config) {
+      return res.status(404).json({ success: false, error: 'Config not found' });
+    }
+    res.json({ success: true, config });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 router.post('/mass-dm', async (req, res) => {
   try {
     const config = await MassDMConfig.create(req.body);
@@ -106,6 +130,18 @@ router.get('/ai-chat', async (req, res) => {
   try {
     const configs = await AIChatConfig.find().populate('accountIds', 'username role');
     res.json({ success: true, configs });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/ai-chat/:id', async (req, res) => {
+  try {
+    const config = await AIChatConfig.findById(req.params.id).populate('accountIds', 'username role');
+    if (!config) {
+      return res.status(404).json({ success: false, error: 'Config not found' });
+    }
+    res.json({ success: true, config });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
