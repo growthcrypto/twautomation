@@ -26,6 +26,7 @@ function showTab(tabName) {
         loadLeads();
         loadLeadsAnalytics();
     }
+    if (tabName === 'testing') loadActiveTests();
     if (tabName === 'dashboard') loadDashboard();
     if (tabName === 'resources') loadAPIKeys();  // Load API keys when Resources tab opens
 }
@@ -1368,6 +1369,308 @@ async function deleteLead(leadId) {
     }
 }
 
+// ============================================
+// TESTING / A/B TESTING
+// ============================================
+
+async function loadActiveTests() {
+    try {
+        const response = await fetch(`${API_URL}/configs/testing/cohorts`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error);
+        }
+        
+        const container = document.getElementById('activeTestsList');
+        const test1Select = document.getElementById('compareTest1');
+        const test2Select = document.getElementById('compareTest2');
+        
+        if (data.cohorts.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-flask text-4xl mb-2 opacity-50"></i>
+                    <p>No active tests. Create one to get started!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Populate test list
+        container.innerHTML = data.cohorts.map(cohort => `
+            <div class="bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <div>
+                        <h4 class="font-bold text-white">${cohort.testName}</h4>
+                        <p class="text-xs text-gray-400">${cohort.strategy.replace(/_/g, ' ')}</p>
+                    </div>
+                    <span class="px-2 py-1 rounded text-xs ${
+                        cohort.status === 'running' ? 'bg-green-900 text-green-300' :
+                        cohort.status === 'completed' ? 'bg-blue-900 text-blue-300' :
+                        'bg-gray-700 text-gray-300'
+                    }">
+                        ${cohort.status}
+                    </span>
+                </div>
+                <div class="grid grid-cols-4 gap-2 text-xs mb-3">
+                    <div class="text-center">
+                        <div class="text-gray-500">Accounts</div>
+                        <div class="text-white font-medium">${cohort.accounts?.length || 0}</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-gray-500">Ban Rate</div>
+                        <div class="text-white font-medium">${cohort.results?.banRate?.toFixed(1) || 0}%</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-gray-500">Conv Rate</div>
+                        <div class="text-white font-medium">${cohort.results?.conversionRate?.toFixed(1) || 0}%</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-gray-500">Revenue</div>
+                        <div class="text-white font-medium">$${cohort.results?.totalRevenue?.toFixed(0) || 0}</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="viewTestDetails('${cohort._id}')" class="flex-1 text-blue-400 hover:text-blue-300 text-sm">
+                        <i class="fas fa-eye mr-1"></i>View
+                    </button>
+                    ${cohort.status === 'running' ? `
+                        <button onclick="stopTest('${cohort._id}')" class="flex-1 text-orange-400 hover:text-orange-300 text-sm">
+                            <i class="fas fa-stop mr-1"></i>Stop
+                        </button>
+                    ` : ''}
+                    ${cohort.status === 'planning' ? `
+                        <button onclick="startTest('${cohort._id}')" class="flex-1 text-green-400 hover:text-green-300 text-sm">
+                            <i class="fas fa-play mr-1"></i>Start
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `).join('');
+        
+        // Populate comparison dropdowns
+        const options = data.cohorts.map(c => `<option value="${c._id}">${c.testName}</option>`).join('');
+        test1Select.innerHTML = '<option value="">Select test...</option>' + options;
+        test2Select.innerHTML = '<option value="">Select test...</option>' + options;
+        
+    } catch (error) {
+        console.error('Error loading tests:', error);
+        alert('❌ Error loading tests: ' + error.message);
+    }
+}
+
+async function createTestCohort() {
+    const name = prompt('Test Name:', 'My A/B Test');
+    if (!name) return;
+    
+    const strategies = [
+        'evolution_single_account',
+        'hybrid_follow_dm',
+        'specialist_separate',
+        'specialist_follow_only',
+        'specialist_dm_only',
+        'custom'
+    ];
+    
+    const strategyChoice = prompt(
+        'Choose strategy:\n\n' +
+        '1. Evolution (single account)\n' +
+        '2. Hybrid (follow + DM)\n' +
+        '3. Specialist (separate accounts)\n' +
+        '4. Follow only\n' +
+        '5. DM only\n' +
+        '6. Custom\n\n' +
+        'Enter number (1-6):'
+    );
+    
+    if (!strategyChoice || strategyChoice < 1 || strategyChoice > 6) {
+        alert('Invalid choice');
+        return;
+    }
+    
+    const strategy = strategies[parseInt(strategyChoice) - 1];
+    
+    try {
+        const response = await fetch(`${API_URL}/configs/testing/cohorts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                testName: name,
+                strategy,
+                status: 'planning',
+                config: {
+                    warmupDays: 14,
+                    followPerDay: 100,
+                    dmPerDay: 30,
+                    hasPremium: false
+                }
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ Test created! Now add accounts to it.`);
+            loadActiveTests();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error creating test:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function viewTestDetails(testId) {
+    try {
+        const response = await fetch(`${API_URL}/configs/testing/cohorts/${testId}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error);
+        }
+        
+        const cohort = data.cohort;
+        alert(
+            `📊 ${cohort.testName}\n\n` +
+            `Strategy: ${cohort.strategy.replace(/_/g, ' ')}\n` +
+            `Status: ${cohort.status}\n` +
+            `Accounts: ${cohort.accounts.length}\n\n` +
+            `Results:\n` +
+            `- Ban Rate: ${cohort.results.banRate.toFixed(1)}%\n` +
+            `- Follow-back Rate: ${cohort.results.followBackRate.toFixed(1)}%\n` +
+            `- Reply Rate: ${cohort.results.replyRate.toFixed(1)}%\n` +
+            `- Conversion Rate: ${cohort.results.conversionRate.toFixed(1)}%\n` +
+            `- Revenue/Account: $${cohort.results.revenuePerAccount.toFixed(2)}\n` +
+            `- Total Revenue: $${cohort.results.totalRevenue.toFixed(2)}`
+        );
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function startTest(testId) {
+    if (!confirm('Start this test?')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/configs/testing/cohorts/${testId}/start`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Test started!');
+            loadActiveTests();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function stopTest(testId) {
+    if (!confirm('Stop this test? (Will calculate final results)')) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/configs/testing/cohorts/${testId}/stop`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Test stopped and results calculated!');
+            loadActiveTests();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function compareTests() {
+    const test1Id = document.getElementById('compareTest1').value;
+    const test2Id = document.getElementById('compareTest2').value;
+    
+    if (!test1Id || !test2Id) {
+        alert('Please select two tests to compare');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/configs/testing/compare?cohortIds=${test1Id},${test2Id}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error);
+        }
+        
+        const results = document.getElementById('comparisonResults');
+        results.classList.remove('hidden');
+        
+        results.innerHTML = `
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="border-b border-gray-700">
+                        <tr>
+                            <th class="text-left py-2 text-gray-400">Metric</th>
+                            <th class="text-center py-2 text-blue-400">${data.comparison[0].name}</th>
+                            <th class="text-center py-2 text-green-400">${data.comparison[1].name}</th>
+                            <th class="text-center py-2 text-gray-400">Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-300">
+                        <tr class="border-b border-gray-800">
+                            <td class="py-2">Ban Rate</td>
+                            <td class="text-center">${data.comparison[0].banRate.toFixed(1)}%</td>
+                            <td class="text-center">${data.comparison[1].banRate.toFixed(1)}%</td>
+                            <td class="text-center">${data.comparison[0].banRate < data.comparison[1].banRate ? '👈 Test 1' : '👉 Test 2'}</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="py-2">Follow-back Rate</td>
+                            <td class="text-center">${data.comparison[0].followBackRate.toFixed(1)}%</td>
+                            <td class="text-center">${data.comparison[1].followBackRate.toFixed(1)}%</td>
+                            <td class="text-center">${data.comparison[0].followBackRate > data.comparison[1].followBackRate ? '👈 Test 1' : '👉 Test 2'}</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="py-2">Reply Rate</td>
+                            <td class="text-center">${data.comparison[0].replyRate.toFixed(1)}%</td>
+                            <td class="text-center">${data.comparison[1].replyRate.toFixed(1)}%</td>
+                            <td class="text-center">${data.comparison[0].replyRate > data.comparison[1].replyRate ? '👈 Test 1' : '👉 Test 2'}</td>
+                        </tr>
+                        <tr class="border-b border-gray-800">
+                            <td class="py-2">Conversion Rate</td>
+                            <td class="text-center font-bold">${data.comparison[0].conversionRate.toFixed(1)}%</td>
+                            <td class="text-center font-bold">${data.comparison[1].conversionRate.toFixed(1)}%</td>
+                            <td class="text-center font-bold">${data.comparison[0].conversionRate > data.comparison[1].conversionRate ? '🏆 Test 1' : '🏆 Test 2'}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2">Revenue/Account</td>
+                            <td class="text-center font-bold text-green-400">$${data.comparison[0].revenuePerAccount.toFixed(2)}</td>
+                            <td class="text-center font-bold text-green-400">$${data.comparison[1].revenuePerAccount.toFixed(2)}</td>
+                            <td class="text-center font-bold">${data.comparison[0].revenuePerAccount > data.comparison[1].revenuePerAccount ? '💰 Test 1' : '💰 Test 2'}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error comparing tests:', error);
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+function loadTestResults() {
+    loadActiveTests();
+}
+
 // Make globally available
 window.toggleLogs = toggleLogs;
 window.clearLogs = clearLogs;
@@ -1376,6 +1679,13 @@ window.loadLeadsAnalytics = loadLeadsAnalytics;
 window.markAsConverted = markAsConverted;
 window.updateLeadStatus = updateLeadStatus;
 window.deleteLead = deleteLead;
+window.loadActiveTests = loadActiveTests;
+window.createTestCohort = createTestCohort;
+window.viewTestDetails = viewTestDetails;
+window.startTest = startTest;
+window.stopTest = stopTest;
+window.compareTests = compareTests;
+window.loadTestResults = loadTestResults;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {

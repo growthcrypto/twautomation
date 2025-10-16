@@ -89,6 +89,12 @@
             <button onclick="showTab('leads')" class="tab-btn px-6 py-3 bg-gray-800 text-gray-300 rounded-lg font-medium whitespace-nowrap hover:bg-gray-700" data-tab="leads">
                 <i class="fas fa-users-cog mr-2"></i>Leads
             </button>
+            <button onclick="showTab('testing')" class="tab-btn px-6 py-3 bg-gray-800 text-gray-300 rounded-lg font-medium whitespace-nowrap hover:bg-gray-700" data-tab="testing">
+                <i class="fas fa-flask mr-2"></i>Testing
+            </button>
+            <button onclick="location.href='config-warmup.html'" class="tab-btn px-6 py-3 bg-purple-800 text-white rounded-lg font-medium whitespace-nowrap hover:bg-purple-700">
+                <i class="fas fa-seedling mr-2"></i>Warmup Config
+            </button>
         </div>
 
         <!-- Dashboard Tab -->
@@ -272,12 +278,12 @@
                 </div>
                 <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
                     <h3 class="text-lg font-bold text-white mb-4">
-                        <i class="fas fa-search text-yellow-400 mr-2"></i>Lead Scraper
+                        <i class="fas fa-seedling text-purple-400 mr-2"></i>Warmup
                     </h3>
-                    <p class="text-gray-400 text-sm mb-4">Collect quality leads from communities</p>
-                    <div class="bg-yellow-900/20 border border-yellow-600/50 rounded px-3 py-2 text-yellow-300 text-xs">
-                        Coming Soon
-                    </div>
+                    <p class="text-gray-400 text-sm mb-4">Configure account warmup schedules</p>
+                    <a href="config-warmup.html" class="block w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded font-medium text-center">
+                        Configure
+                    </a>
                 </div>
             </div>
         </div>
@@ -549,6 +555,89 @@
                             </td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Tab -->
+        <div id="tab-testing" class="tab-content hidden">
+            <!-- Quick Links -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <a href="config-warmup.html" class="bg-gradient-to-br from-purple-600 to-purple-800 p-6 rounded-lg hover:from-purple-700 hover:to-purple-900 transition">
+                    <div class="flex items-center justify-between mb-3">
+                        <i class="fas fa-seedling text-3xl text-purple-200"></i>
+                        <span class="text-xs bg-purple-900 text-purple-200 px-2 py-1 rounded">CONFIG</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Warmup Configuration</h3>
+                    <p class="text-purple-200 text-sm">Set up 30-day, 14-day, or custom warmup schedules</p>
+                </a>
+
+                <div class="bg-gradient-to-br from-blue-600 to-blue-800 p-6 rounded-lg cursor-pointer hover:from-blue-700 hover:to-blue-900 transition" onclick="createTestCohort()">
+                    <div class="flex items-center justify-between mb-3">
+                        <i class="fas fa-flask text-3xl text-blue-200"></i>
+                        <span class="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">CREATE</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Create A/B Test</h3>
+                    <p class="text-blue-200 text-sm">Test different strategies side-by-side</p>
+                </div>
+
+                <div class="bg-gradient-to-br from-green-600 to-green-800 p-6 rounded-lg cursor-pointer hover:from-green-700 hover:to-green-900 transition" onclick="loadTestResults()">
+                    <div class="flex items-center justify-between mb-3">
+                        <i class="fas fa-chart-bar text-3xl text-green-200"></i>
+                        <span class="text-xs bg-green-900 text-green-200 px-2 py-1 rounded">RESULTS</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">View Test Results</h3>
+                    <p class="text-green-200 text-sm">Compare cohorts and see what's working</p>
+                </div>
+            </div>
+
+            <!-- Active Tests -->
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-vial text-blue-400"></i>
+                        Active Tests
+                    </h3>
+                    <button onclick="loadActiveTests()" class="text-blue-400 hover:text-blue-300 text-sm">
+                        <i class="fas fa-sync-alt mr-1"></i>Refresh
+                    </button>
+                </div>
+                <div id="activeTestsList" class="space-y-3">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-flask text-4xl mb-2 opacity-50"></i>
+                        <p>No active tests. Create one to get started!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Comparison -->
+            <div class="bg-gray-900 border border-gray-800 p-6 rounded-lg">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="fas fa-balance-scale text-orange-400"></i>
+                    Compare Tests
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="text-sm text-gray-400 block mb-2">Test 1</label>
+                        <select id="compareTest1" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            <option value="">Select test...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-400 block mb-2">Test 2</label>
+                        <select id="compareTest2" class="w-full bg-gray-800 border border-gray-700 rounded px-4 py-2 text-white">
+                            <option value="">Select test...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-400 block mb-2">&nbsp;</label>
+                        <button onclick="compareTests()" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            <i class="fas fa-chart-line mr-2"></i>Compare
+                        </button>
+                    </div>
+                </div>
+                <div id="comparisonResults" class="hidden">
+                    <!-- Results will be inserted here -->
                 </div>
             </div>
         </div>
