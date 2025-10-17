@@ -1,6 +1,6 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
-const liveFollowEngine = require('../live-follow-engine-working'); // Using WORKING version (visits profiles)
+const liveFollowEngine = require('../live-follow-engine-fixed'); // FIXED - finds buttons in list properly
 const { incrementDailyCounter } = require('../../utils/account-helpers');
 const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
@@ -169,13 +169,13 @@ class FollowUnfollowCampaign {
         return;
       }
 
-      // Follow 2-5 users per session (visiting each profile)
+      // Follow 5-10 users per session (from list - fast!)
       const batchSize = Math.min(
-        this.randomBetween(2, 5),
+        this.randomBetween(5, 10),
         remainingToday
       );
 
-      console.log(`🎯 Starting follow session: ${batchSize} follows from ${source.type} (visiting profiles)`);
+      console.log(`🎯 Starting follow session: ${batchSize} follows from ${source.type}`);
 
       let result;
 
