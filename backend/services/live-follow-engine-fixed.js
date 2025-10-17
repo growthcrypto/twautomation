@@ -114,9 +114,11 @@ class FixedFollowEngine {
           continue;
         }
 
-        // Process each button
+        // Process visible buttons only (take first 3-5 from current view)
+        const visibleBatch = allButtons.slice(0, Math.min(5, allButtons.length));
         let followedThisRound = 0;
-        for (const btnInfo of allButtons) {
+        
+        for (const btnInfo of visibleBatch) {
           if (followCount >= maxFollows) break;
 
           const username = btnInfo.username;
@@ -137,39 +139,54 @@ class FixedFollowEngine {
             continue;
           }
 
-          // Find and click the button
+          // Find and click the button (simplified - just find by username)
           try {
-            const clicked = await page.evaluate((btnIndex, username) => {
-              const buttons = [
+            const clicked = await page.evaluate((targetUsername) => {
+              // Search all potential follow buttons
+              const allButtons = [
                 ...document.querySelectorAll('button'),
-                ...document.querySelectorAll('div[role="button"]'),
-                ...document.querySelectorAll('span[role="button"]'),
-                ...document.querySelectorAll('[data-testid*="follow"]')
+                ...document.querySelectorAll('div[role="button"]')
               ];
-              const targetBtn = buttons[btnIndex];
               
-              if (targetBtn && (targetBtn.innerText.trim() === 'Follow' || targetBtn.getAttribute('data-testid') === 'follow')) {
-                targetBtn.click();
-                return true;
+              for (const btn of allButtons) {
+                const text = btn.innerText ? btn.innerText.trim() : '';
+                if (text !== 'Follow') continue;
+                
+                // Find username near this button by checking parent containers
+                let element = btn;
+                for (let i = 0; i < 20; i++) {
+                  if (!element.parentElement) break;
+                  element = element.parentElement;
+                  
+                  // Check all links in this container
+                  const links = element.querySelectorAll('a[href^="/"]');
+                  for (const link of links) {
+                    const href = link.getAttribute('href') || '';
+                    const parts = href.split('/').filter(p => p);
+                    if (parts[0] === targetUsername || href === `/${targetUsername}`) {
+                      // Found the right user! Click the button
+                      btn.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                      setTimeout(() => btn.click(), 500);
+                      return true;
+                    }
+                  }
+                }
               }
               return false;
-            }, btnInfo.index, username);
+            }, username);
 
             if (clicked) {
               console.log(`👤 Following @${username}...`);
-              await this.humanDelay(1000, 2000);
+              await this.humanDelay(800, 1500);
               followCount++;
               followedThisRound++;
               console.log(`✅ Followed @${username} (${followCount}/${maxFollows})`);
 
-              // Random pause between follows
-              const pauseTime = this.randomBetween(
-                config.delayBetweenFollows?.min || 2,
-                config.delayBetweenFollows?.max || 5
-              );
+              // Short pause between follows
+              const pauseTime = this.randomBetween(2, 4);
               await this.humanDelay(pauseTime * 1000, pauseTime * 1000);
             } else {
-              console.log(`⚠️  Button disappeared or changed for @${username}`);
+              console.log(`⚠️  Couldn't click button for @${username} (not visible or changed)`);
             }
 
           } catch (error) {
@@ -178,16 +195,20 @@ class FixedFollowEngine {
           }
         }
 
-        // Scroll for more users
+        // Scroll for more users only if we followed someone or need fresh content
         if (followCount < maxFollows) {
-          console.log(`📜 Scrolling for more users... (${followCount}/${maxFollows} follows so far, ${followedThisRound} this round)`);
-          await this.humanScroll(page);
-          await this.humanDelay(2000, 3000);
-          
-          if (followedThisRound === 0) {
-            scrollAttempts++;
+          if (followedThisRound > 0) {
+            // We followed people, scroll smoothly to see new users
+            console.log(`📜 Scrolling down smoothly... (${followCount}/${maxFollows} follows so far)`);
+            await this.humanScroll(page);
+            await this.humanDelay(2000, 3000);
+            scrollAttempts = 0; // Reset since we're making progress
           } else {
-            scrollAttempts = 0; // Reset if we found people
+            // No one followed this round, scroll more aggressively
+            console.log(`⬇️  Scrolling for fresh users...`);
+            await this.humanScroll(page);
+            await this.humanDelay(1500, 2000);
+            scrollAttempts++;
           }
         }
       }
@@ -328,17 +349,17 @@ class FixedFollowEngine {
   }
 
   /**
-   * Human-like scroll
+   * Human-like scroll (smooth and natural)
    */
   async humanScroll(page) {
-    const scrollAmount = this.randomBetween(400, 900);
+    const scrollAmount = this.randomBetween(300, 600);
     await page.evaluate((distance) => {
       window.scrollBy({
         top: distance,
         behavior: 'smooth'
       });
     }, scrollAmount);
-    await this.humanDelay(500, 1200);
+    await this.humanDelay(800, 1500);
   }
 
   /**
