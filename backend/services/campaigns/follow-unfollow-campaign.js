@@ -1,6 +1,6 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
-const liveFollowEngine = require('../live-follow-engine');
+const liveFollowEngine = require('../live-follow-engine-simple'); // Using simplified version
 const { incrementDailyCounter } = require('../../utils/account-helpers');
 const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
@@ -163,11 +163,6 @@ class FollowUnfollowCampaign {
       // Calculate how many to follow in this session
       const account = await TwitterAccount.findById(state.accountId);
       const remainingToday = state.config.maxFollowsPerDay - (account.today.follows || 0);
-      
-      // Clear session cache if it's a new day (first action of the day)
-      if (account.today.follows === 0) {
-        liveFollowEngine.clearSession(state.accountId);
-      }
       
       if (remainingToday <= 0) {
         console.log(`📊 Daily follow limit reached`);

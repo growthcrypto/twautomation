@@ -62,12 +62,53 @@ class LiveFollowEngine {
           if (followCount >= maxFollows) break;
 
           try {
-            // Extract username
-            const username = await userCell.$eval('[data-testid="User-Name"] a[href^="/"]', 
-              el => el.getAttribute('href').replace('/', '')).catch(() => null);
+            // Extract username - try multiple selectors
+            let username = null;
+            
+            // Try selector 1: Standard User-Name testid
+            try {
+              username = await userCell.$eval('[data-testid="User-Name"] a[href^="/"]', 
+                el => el.getAttribute('href').replace(/\//g, ''));
+            } catch {}
+            
+            // Try selector 2: Any link in the cell starting with /
+            if (!username) {
+              try {
+                const links = await userCell.$$('a[href^="/"]');
+                for (const link of links) {
+                  const href = await link.evaluate(el => el.getAttribute('href'));
+                  if (href && !href.includes('/') && href.length > 0) {
+                    username = href.replace(/\//g, '');
+                    break;
+                  }
+                  // Get just the username part (first segment)
+                  const parts = href.split('/').filter(p => p.length > 0);
+                  if (parts.length > 0 && !parts[0].includes('i')) {
+                    username = parts[0];
+                    break;
+                  }
+                }
+              } catch {}
+            }
+            
+            // Try selector 3: Get the follow button and work backwards
+            if (!username) {
+              try {
+                const followBtn = await userCell.$('[data-testid="follow"]');
+                if (followBtn) {
+                  // Look for username in aria-label
+                  const ariaLabel = await followBtn.evaluate(el => el.getAttribute('aria-label'));
+                  if (ariaLabel) {
+                    // Extract from "Follow @username"
+                    const match = ariaLabel.match(/@(\w+)/);
+                    if (match) username = match[1];
+                  }
+                }
+              } catch {}
+            }
 
             if (!username) {
-              console.log('⚠️  Could not extract username from cell');
+              // Skip this cell silently
               continue;
             }
 
