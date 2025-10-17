@@ -18,13 +18,28 @@ const followUnfollowConfigSchema = new mongoose.Schema({
     max: { type: Number, default: 120 }
   },
   
-  // Break System
+  // Break System (REALISTIC - RANDOM INTERVALS!)
   breaks: {
     enabled: { type: Boolean, default: true },
-    afterActions: { type: Number, default: 20 },
+    afterActions: {
+      min: { type: Number, default: 15 },  // Take break after 15-25 follows (RANDOM)
+      max: { type: Number, default: 25 }
+    },
     breakDuration: {
-      min: { type: Number, default: 300 },  // seconds
+      min: { type: Number, default: 300 },  // Break for 5-15 minutes (RANDOM)
       max: { type: Number, default: 900 }
+    },
+    // Activity during breaks (looks human!)
+    duringBreak: {
+      enabled: { type: Boolean, default: true },
+      activities: {
+        goToHome: { type: Boolean, default: true },
+        scrollFeed: { type: Boolean, default: true },
+        likePosts: { type: Boolean, default: true, probability: 30 },
+        readTweets: { type: Boolean, default: true, probability: 40 },
+        readReplies: { type: Boolean, default: true, probability: 20 },
+        visitProfiles: { type: Boolean, default: true, probability: 15 }
+      }
     }
   },
   

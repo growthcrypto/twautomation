@@ -1,6 +1,7 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
 const liveFollowEngine = require('../live-follow-engine-fixed'); // LIST-BASED - follows from list!
+const breakActivityService = require('../break-activity');
 const { incrementDailyCounter } = require('../../utils/account-helpers');
 const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
@@ -38,15 +39,24 @@ class FollowUnfollowCampaign {
       console.log(`🚀 Starting Follow/Unfollow campaign for @${account.username}`);
 
       // Initialize campaign state
+      // Set RANDOM break target (e.g., 15-25 follows instead of always 20)
+      const breakConfig = config.breaks || {};
+      const nextBreakTarget = breakConfig.afterActions?.min && breakConfig.afterActions?.max 
+        ? this.randomBetween(breakConfig.afterActions.min, breakConfig.afterActions.max)
+        : (breakConfig.afterActions || 20);
+      
       const state = {
         accountId,
         config,
         actionsToday: 0,
         actionsSinceBreak: 0,
+        nextBreakTarget: nextBreakTarget,  // RANDOM target each time!
         isOnBreak: false,
         breakUntil: null,
         lastActionTime: null
       };
+      
+      console.log(`🎲 Random break target set: Will take break after ${nextBreakTarget} follows`);
 
       this.runningCampaigns.set(accountId.toString(), state);
 
@@ -128,10 +138,10 @@ class FollowUnfollowCampaign {
         async () => await this.executeFollowAction(state)
       );
 
-      // Check if should take break
+      // Check if should take break (RANDOM target each time!)
       if (state.config.breaks.enabled) {
-        if (state.actionsSinceBreak >= state.config.breaks.afterActions) {
-          this.takeBreak(state);
+        if (state.actionsSinceBreak >= state.nextBreakTarget) {
+          await this.takeBreak(state);
         }
       }
 
@@ -228,7 +238,7 @@ class FollowUnfollowCampaign {
         }
 
         console.log(`✅ Follow session complete (${result.followedCount} follows, ${state.actionsToday} today)`);
-        console.log(`📊 Actions since last break: ${state.actionsSinceBreak}/${state.config.breaks.afterActions}`);
+        console.log(`📊 Actions since last break: ${state.actionsSinceBreak}/${state.nextBreakTarget}`);
 
       } else {
         console.log(`⚠️  Follow session failed or found no users`);
@@ -307,9 +317,9 @@ class FollowUnfollowCampaign {
   }
 
   /**
-   * Take a break
+   * Take a break (WITH HUMAN ACTIVITY!)
    */
-  takeBreak(state) {
+  async takeBreak(state) {
     const breakDuration = this.randomBetween(
       state.config.breaks.breakDuration.min * 1000,
       state.config.breaks.breakDuration.max * 1000
@@ -321,15 +331,34 @@ class FollowUnfollowCampaign {
     const breakMinutes = Math.ceil(breakDuration / 1000 / 60);
     const breakSeconds = Math.ceil(breakDuration / 1000);
     
+    // Set NEW RANDOM break target for next time!
+    const breakConfig = state.config.breaks || {};
+    const nextBreakTarget = breakConfig.afterActions?.min && breakConfig.afterActions?.max 
+      ? this.randomBetween(breakConfig.afterActions.min, breakConfig.afterActions.max)
+      : (breakConfig.afterActions || 20);
+    state.nextBreakTarget = nextBreakTarget;
+    
     console.log(`\n${'='.repeat(60)}`);
     console.log(`☕ TAKING BREAK!`);
     console.log(`   Followed ${state.actionsSinceBreak} users`);
     console.log(`   Break duration: ${breakMinutes} minutes (${breakSeconds} seconds)`);
     console.log(`   Will resume at: ${new Date(state.breakUntil).toLocaleTimeString()}`);
+    console.log(`   Next break after: ${nextBreakTarget} more follows (RANDOM!)`);
     console.log(`${'='.repeat(60)}\n`);
     
     // Reset counter
     state.actionsSinceBreak = 0;
+    
+    // DO HUMAN ACTIVITY DURING BREAK!
+    if (breakConfig.duringBreak?.enabled) {
+      await breakActivityService.simulateBreakActivity(
+        state.accountId, 
+        breakDuration, 
+        breakConfig.duringBreak
+      );
+    } else {
+      console.log(`   💤 Idle break (no activity configured)`);
+    }
   }
 
   /**
