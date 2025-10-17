@@ -28,18 +28,36 @@ class FixedFollowEngine {
       while (followCount < maxFollows && scrollAttempts < maxScrollAttempts) {
         console.log(`🔍 Looking for users to follow...`);
 
-        // Find ALL buttons on the page with various selectors
-        const allButtons = await page.evaluate(() => {
-          const buttons = [];
+        // COMPREHENSIVE DEBUG - Find ALL buttons on the page
+        const debugInfo = await page.evaluate(() => {
+          const debug = {
+            allRoleButtons: 0,
+            buttonTexts: [],
+            followButtons: [],
+            followingButtons: 0,
+            otherButtons: []
+          };
           
-          // Find all divs with role="button" that might be follow buttons
-          const roleButtons = document.querySelectorAll('div[role="button"]');
+          // Find ALL button-like elements (button tags, div[role=button], spans with onClick)
+          const roleButtons = [
+            ...document.querySelectorAll('button'),
+            ...document.querySelectorAll('div[role="button"]'),
+            ...document.querySelectorAll('span[role="button"]'),
+            ...document.querySelectorAll('[data-testid*="follow"]')
+          ];
+          debug.allRoleButtons = roleButtons.length;
+          
           roleButtons.forEach((btn, idx) => {
             const text = btn.innerText.trim();
-            const ariaLabel = btn.getAttribute('aria-label');
+            const ariaLabel = btn.getAttribute('aria-label') || '';
+            
+            // Collect all button texts for debugging
+            if (text.length > 0 && text.length < 20) {
+              debug.buttonTexts.push(text);
+            }
             
             // Check if it's a "Follow" button (not "Following")
-            if (text === 'Follow' || (ariaLabel && ariaLabel.includes('Follow') && !ariaLabel.includes('Following'))) {
+            if (text === 'Follow' || (ariaLabel.includes('Follow') && !ariaLabel.includes('Following'))) {
               // Get parent container to find username
               let parent = btn;
               for (let i = 0; i < 10; i++) {
@@ -52,7 +70,7 @@ class FixedFollowEngine {
                   const href = usernameLink.getAttribute('href');
                   const username = href.replace('/', '').split('/')[0];
                   if (username && !username.includes('i/') && username.length > 0) {
-                    buttons.push({
+                    debug.followButtons.push({
                       index: idx,
                       username: username,
                       buttonText: text,
@@ -62,13 +80,24 @@ class FixedFollowEngine {
                   }
                 }
               }
+            } else if (text === 'Following') {
+              debug.followingButtons++;
+            } else if (text.length > 0 && text.length < 20) {
+              debug.otherButtons.push(text);
             }
           });
           
-          return buttons;
+          return debug;
         });
 
-        console.log(`📋 Found ${allButtons.length} follow buttons with usernames`);
+        // Log comprehensive debug info
+        console.log(`📋 Button Analysis:`);
+        console.log(`   Total role=button elements: ${debugInfo.allRoleButtons}`);
+        console.log(`   "Follow" buttons found: ${debugInfo.followButtons.length}`);
+        console.log(`   "Following" buttons: ${debugInfo.followingButtons}`);
+        console.log(`   Unique button texts: ${[...new Set(debugInfo.buttonTexts)].join(', ')}`);
+        
+        const allButtons = debugInfo.followButtons;
 
         if (allButtons.length === 0) {
           console.log('⚠️  No follow buttons found, scrolling...');
@@ -104,10 +133,15 @@ class FixedFollowEngine {
           // Find and click the button
           try {
             const clicked = await page.evaluate((btnIndex, username) => {
-              const buttons = document.querySelectorAll('div[role="button"]');
+              const buttons = [
+                ...document.querySelectorAll('button'),
+                ...document.querySelectorAll('div[role="button"]'),
+                ...document.querySelectorAll('span[role="button"]'),
+                ...document.querySelectorAll('[data-testid*="follow"]')
+              ];
               const targetBtn = buttons[btnIndex];
               
-              if (targetBtn && targetBtn.innerText.trim() === 'Follow') {
+              if (targetBtn && (targetBtn.innerText.trim() === 'Follow' || targetBtn.getAttribute('data-testid') === 'follow')) {
                 targetBtn.click();
                 return true;
               }
@@ -187,11 +221,16 @@ class FixedFollowEngine {
       while (followCount < maxFollows && scrollAttempts < maxScrollAttempts) {
         const allButtons = await page.evaluate(() => {
           const buttons = [];
-          const roleButtons = document.querySelectorAll('div[role="button"]');
+          const roleButtons = [
+            ...document.querySelectorAll('button'),
+            ...document.querySelectorAll('div[role="button"]'),
+            ...document.querySelectorAll('span[role="button"]'),
+            ...document.querySelectorAll('[data-testid*="follow"]')
+          ];
           
           roleButtons.forEach((btn, idx) => {
-            const text = btn.innerText.trim();
-            if (text === 'Follow') {
+            const text = btn.innerText ? btn.innerText.trim() : '';
+            if (text === 'Follow' || btn.getAttribute('data-testid') === 'follow') {
               let parent = btn;
               for (let i = 0; i < 10; i++) {
                 if (!parent.parentElement) break;
@@ -235,9 +274,14 @@ class FixedFollowEngine {
 
           try {
             const clicked = await page.evaluate((idx) => {
-              const buttons = document.querySelectorAll('div[role="button"]');
+              const buttons = [
+                ...document.querySelectorAll('button'),
+                ...document.querySelectorAll('div[role="button"]'),
+                ...document.querySelectorAll('span[role="button"]'),
+                ...document.querySelectorAll('[data-testid*="follow"]')
+              ];
               const btn = buttons[idx];
-              if (btn && btn.innerText.trim() === 'Follow') {
+              if (btn && (btn.innerText.trim() === 'Follow' || btn.getAttribute('data-testid') === 'follow')) {
                 btn.click();
                 return true;
               }

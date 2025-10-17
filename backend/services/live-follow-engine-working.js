@@ -128,8 +128,25 @@ class WorkingFollowEngine {
               } catch {}
             }
 
-            // Now follow from the profile
-            const followButton = await page.$('[data-testid="follow"]');
+            // Now follow from the profile - try multiple button types
+            let followButton = await page.$('[data-testid="follow"]');
+            if (!followButton) {
+              // Try finding button by text
+              followButton = await page.evaluateHandle(() => {
+                const buttons = [
+                  ...document.querySelectorAll('button'),
+                  ...document.querySelectorAll('div[role="button"]'),
+                  ...document.querySelectorAll('span[role="button"]')
+                ];
+                return buttons.find(btn => btn.innerText?.trim() === 'Follow') || null;
+              });
+              if (followButton && followButton.asElement()) {
+                followButton = followButton.asElement();
+              } else {
+                followButton = null;
+              }
+            }
+            
             if (followButton) {
               console.log(`✅ Following @${username}...`);
               await followButton.click();

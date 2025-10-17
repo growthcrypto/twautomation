@@ -1,6 +1,6 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
-const liveFollowEngine = require('../live-follow-engine-fixed'); // FIXED - finds buttons in list properly
+const liveFollowEngine = require('../live-follow-engine-working'); // BACK TO WORKING VERSION - visits profiles
 const { incrementDailyCounter } = require('../../utils/account-helpers');
 const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');
