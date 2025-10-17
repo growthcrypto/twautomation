@@ -212,8 +212,10 @@ class FixedFollowEngine {
               followedThisRound++;
               console.log(`✅ Followed @${username} (${followCount}/${maxFollows})`);
 
-              // Variable pause between follows (gets longer as we follow more)
-              const basePause = this.randomBetween(2, 4);
+              // Variable pause between follows (uses config settings!)
+              const configMin = config.delayBetweenFollows?.min || 2;
+              const configMax = config.delayBetweenFollows?.max || 4;
+              const basePause = this.randomBetween(configMin, configMax);
               const extraPause = followCount % 5 === 0 ? this.randomBetween(3, 6) : 0; // Extra pause every 5 follows
               const totalPause = basePause + extraPause;
               

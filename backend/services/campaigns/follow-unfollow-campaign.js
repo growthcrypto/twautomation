@@ -85,15 +85,19 @@ class FollowUnfollowCampaign {
       if (state.isOnBreak) {
         const now = Date.now();
         if (now < state.breakUntil) {
-          const remainingMin = Math.ceil((state.breakUntil - now) / 1000 / 60);
-          console.log(`☕ On break for ${remainingMin} more minutes...`);
+          const remainingSeconds = Math.ceil((state.breakUntil - now) / 1000);
+          const remainingMin = Math.ceil(remainingSeconds / 60);
+          console.log(`☕ On break for ${remainingMin} more minutes (${remainingSeconds}s)...`);
           setTimeout(() => this.executeCampaignLoop(state), 60 * 1000);
           return;
         } else {
           // Break over
           state.isOnBreak = false;
           state.actionsSinceBreak = 0;
-          console.log(`✅ Break over, resuming campaign`);
+          console.log(`\n${'='.repeat(60)}`);
+          console.log(`✅ BREAK OVER - RESUMING CAMPAIGN`);
+          console.log(`   Time: ${new Date().toLocaleTimeString()}`);
+          console.log(`${'='.repeat(60)}\n`);
         }
       }
 
@@ -213,9 +217,9 @@ class FollowUnfollowCampaign {
       }
 
       if (result.success && result.followedCount > 0) {
-        // Update stats
+        // Update stats - COUNT INDIVIDUAL FOLLOWS for break tracking
         state.actionsToday += result.followedCount;
-        state.actionsSinceBreak += result.followedCount;
+        state.actionsSinceBreak += result.followedCount;  // This now counts actual follows!
         state.lastActionTime = Date.now();
 
         // Update account stats
@@ -224,6 +228,7 @@ class FollowUnfollowCampaign {
         }
 
         console.log(`✅ Follow session complete (${result.followedCount} follows, ${state.actionsToday} today)`);
+        console.log(`📊 Actions since last break: ${state.actionsSinceBreak}/${state.config.breaks.afterActions}`);
 
       } else {
         console.log(`⚠️  Follow session failed or found no users`);
@@ -312,8 +317,19 @@ class FollowUnfollowCampaign {
 
     state.isOnBreak = true;
     state.breakUntil = Date.now() + breakDuration;
-
-    console.log(`☕ Taking break for ${Math.ceil(breakDuration / 1000 / 60)} minutes`);
+    
+    const breakMinutes = Math.ceil(breakDuration / 1000 / 60);
+    const breakSeconds = Math.ceil(breakDuration / 1000);
+    
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`☕ TAKING BREAK!`);
+    console.log(`   Followed ${state.actionsSinceBreak} users`);
+    console.log(`   Break duration: ${breakMinutes} minutes (${breakSeconds} seconds)`);
+    console.log(`   Will resume at: ${new Date(state.breakUntil).toLocaleTimeString()}`);
+    console.log(`${'='.repeat(60)}\n`);
+    
+    // Reset counter
+    state.actionsSinceBreak = 0;
   }
 
   /**
