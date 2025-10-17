@@ -87,28 +87,47 @@
                     </div>
                 </div>
 
-                <!-- Break System -->
+                <!-- Break System (TIME-BASED) -->
                 <div class="bg-gray-800 p-6 rounded-lg">
-                    <h3 class="text-lg font-bold text-white mb-4">Break System</h3>
+                    <h3 class="text-lg font-bold text-white mb-4">Break System (Time-Based)</h3>
                     <div class="space-y-4">
                         <label class="flex items-center gap-3">
                             <input type="checkbox" name="breaksEnabled" checked class="w-5 h-5">
                             <span class="text-gray-300">Enable automatic breaks</span>
                         </label>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Take Break After X Actions</label>
-                                <input type="number" name="breakAfterActions" value="20" min="5" max="100" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                        
+                        <div class="bg-gray-700 p-4 rounded">
+                            <p class="text-sm text-gray-300 mb-3">⏱️ Work for a random time, then take a break (more realistic!)</p>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Work Time (Min Seconds)</label>
+                                    <input type="number" name="timeBetweenBreaksMin" value="60" min="30" max="600" class="w-full bg-gray-600 border border-gray-500 rounded px-4 py-2 text-white">
+                                    <p class="text-xs text-gray-400 mt-1">Minimum work time before break</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Work Time (Max Seconds)</label>
+                                    <input type="number" name="timeBetweenBreaksMax" value="90" min="60" max="900" class="w-full bg-gray-600 border border-gray-500 rounded px-4 py-2 text-white">
+                                    <p class="text-xs text-gray-400 mt-1">Maximum work time before break</p>
+                                </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Break Duration (Min Minutes)</label>
-                                <input type="number" name="breakDurationMin" value="5" min="1" max="60" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Break Duration (Max Minutes)</label>
-                                <input type="number" name="breakDurationMax" value="15" min="1" max="120" class="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2 text-white">
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Break Length (Min Seconds)</label>
+                                    <input type="number" name="breakDurationMin" value="60" min="30" max="600" class="w-full bg-gray-600 border border-gray-500 rounded px-4 py-2 text-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-300 mb-2">Break Length (Max Seconds)</label>
+                                    <input type="number" name="breakDurationMax" value="180" min="60" max="900" class="w-full bg-gray-600 border border-gray-500 rounded px-4 py-2 text-white">
+                                </div>
                             </div>
                         </div>
+                        
+                        <label class="flex items-center gap-3 mt-3">
+                            <input type="checkbox" name="breakActivityEnabled" checked class="w-5 h-5">
+                            <span class="text-gray-300">🎭 Do random browsing during breaks (scroll, like, read tweets)</span>
+                        </label>
                     </div>
                 </div>
 
@@ -369,10 +388,24 @@
                 },
                 breaks: {
                     enabled: formData.get('breaksEnabled') === 'on',
-                    afterActions: parseInt(formData.get('breakAfterActions')),
+                    timeBetweenBreaks: {
+                        min: parseInt(formData.get('timeBetweenBreaksMin')),
+                        max: parseInt(formData.get('timeBetweenBreaksMax'))
+                    },
                     breakDuration: {
-                        min: parseInt(formData.get('breakDurationMin')) * 60,
-                        max: parseInt(formData.get('breakDurationMax')) * 60
+                        min: parseInt(formData.get('breakDurationMin')),
+                        max: parseInt(formData.get('breakDurationMax'))
+                    },
+                    duringBreak: {
+                        enabled: formData.get('breakActivityEnabled') === 'on',
+                        activities: {
+                            goToHome: true,
+                            scrollFeed: true,
+                            likePosts: { enabled: true, probability: 30 },
+                            readTweets: { enabled: true, probability: 40 },
+                            readReplies: { enabled: true, probability: 20 },
+                            visitProfiles: { enabled: true, probability: 15 }
+                        }
                     }
                 },
                 activeHours: {
