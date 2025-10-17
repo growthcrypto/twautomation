@@ -39,24 +39,26 @@ class FollowUnfollowCampaign {
       console.log(`🚀 Starting Follow/Unfollow campaign for @${account.username}`);
 
       // Initialize campaign state
-      // Set RANDOM break target (e.g., 15-25 follows instead of always 20)
+      // Set RANDOM break time (e.g., work for 60-90 seconds, then break)
       const breakConfig = config.breaks || {};
-      const nextBreakTarget = breakConfig.afterActions?.min && breakConfig.afterActions?.max 
-        ? this.randomBetween(breakConfig.afterActions.min, breakConfig.afterActions.max)
-        : (breakConfig.afterActions || 20);
+      const nextBreakTime = breakConfig.timeBetweenBreaks?.min && breakConfig.timeBetweenBreaks?.max 
+        ? this.randomBetween(breakConfig.timeBetweenBreaks.min * 1000, breakConfig.timeBetweenBreaks.max * 1000)
+        : (120 * 1000); // Default: 2 minutes
       
       const state = {
         accountId,
         config,
         actionsToday: 0,
-        actionsSinceBreak: 0,
-        nextBreakTarget: nextBreakTarget,  // RANDOM target each time!
+        sessionStartTime: Date.now(),    // TIME-BASED tracking!
+        nextBreakTime: nextBreakTime,     // RANDOM time interval!
         isOnBreak: false,
         breakUntil: null,
         lastActionTime: null
       };
       
-      console.log(`🎲 Random break target set: Will take break after ${nextBreakTarget} follows`);
+      const breakMinutes = Math.floor(nextBreakTime / 1000 / 60);
+      const breakSeconds = Math.floor((nextBreakTime / 1000) % 60);
+      console.log(`🎲 Random break timer set: Will take break after ${breakMinutes}m ${breakSeconds}s of activity`);
 
       this.runningCampaigns.set(accountId.toString(), state);
 
@@ -101,12 +103,17 @@ class FollowUnfollowCampaign {
           setTimeout(() => this.executeCampaignLoop(state), 60 * 1000);
           return;
         } else {
-          // Break over
+          // Break over - RESET SESSION TIMER!
           state.isOnBreak = false;
-          state.actionsSinceBreak = 0;
+          state.sessionStartTime = Date.now();  // Reset timer for next work session
+          
+          const nextBreakMinutes = Math.floor(state.nextBreakTime / 1000 / 60);
+          const nextBreakSeconds = Math.floor((state.nextBreakTime / 1000) % 60);
+          
           console.log(`\n${'='.repeat(60)}`);
           console.log(`✅ BREAK OVER - RESUMING CAMPAIGN`);
           console.log(`   Time: ${new Date().toLocaleTimeString()}`);
+          console.log(`   Will work for: ${nextBreakMinutes}m ${nextBreakSeconds}s before next break`);
           console.log(`${'='.repeat(60)}\n`);
         }
       }
@@ -138,9 +145,10 @@ class FollowUnfollowCampaign {
         async () => await this.executeFollowAction(state)
       );
 
-      // Check if should take break (RANDOM target each time!)
+      // Check if should take break (TIME-BASED!)
       if (state.config.breaks.enabled) {
-        if (state.actionsSinceBreak >= state.nextBreakTarget) {
+        const timeWorking = Date.now() - state.sessionStartTime;
+        if (timeWorking >= state.nextBreakTime) {
           await this.takeBreak(state);
         }
       }
@@ -227,9 +235,8 @@ class FollowUnfollowCampaign {
       }
 
       if (result.success && result.followedCount > 0) {
-        // Update stats - COUNT INDIVIDUAL FOLLOWS for break tracking
+        // Update stats
         state.actionsToday += result.followedCount;
-        state.actionsSinceBreak += result.followedCount;  // This now counts actual follows!
         state.lastActionTime = Date.now();
 
         // Update account stats
@@ -237,8 +244,14 @@ class FollowUnfollowCampaign {
           await incrementDailyCounter(state.accountId, 'follows');
         }
 
+        // Calculate time until next break
+        const timeWorking = Date.now() - state.sessionStartTime;
+        const timeRemaining = state.nextBreakTime - timeWorking;
+        const minutesRemaining = Math.floor(timeRemaining / 1000 / 60);
+        const secondsRemaining = Math.floor((timeRemaining / 1000) % 60);
+
         console.log(`✅ Follow session complete (${result.followedCount} follows, ${state.actionsToday} today)`);
-        console.log(`📊 Actions since last break: ${state.actionsSinceBreak}/${state.nextBreakTarget}`);
+        console.log(`⏱️  Time until break: ${minutesRemaining}m ${secondsRemaining}s`);
 
       } else {
         console.log(`⚠️  Follow session failed or found no users`);
@@ -331,23 +344,28 @@ class FollowUnfollowCampaign {
     const breakMinutes = Math.ceil(breakDuration / 1000 / 60);
     const breakSeconds = Math.ceil(breakDuration / 1000);
     
-    // Set NEW RANDOM break target for next time!
+    // Calculate how long they worked before this break
+    const timeWorked = Date.now() - state.sessionStartTime;
+    const workedMinutes = Math.floor(timeWorked / 1000 / 60);
+    const workedSeconds = Math.floor((timeWorked / 1000) % 60);
+    
+    // Set NEW RANDOM break time for next session!
     const breakConfig = state.config.breaks || {};
-    const nextBreakTarget = breakConfig.afterActions?.min && breakConfig.afterActions?.max 
-      ? this.randomBetween(breakConfig.afterActions.min, breakConfig.afterActions.max)
-      : (breakConfig.afterActions || 20);
-    state.nextBreakTarget = nextBreakTarget;
+    const nextBreakTime = breakConfig.timeBetweenBreaks?.min && breakConfig.timeBetweenBreaks?.max 
+      ? this.randomBetween(breakConfig.timeBetweenBreaks.min * 1000, breakConfig.timeBetweenBreaks.max * 1000)
+      : (120 * 1000);
+    state.nextBreakTime = nextBreakTime;
+    
+    const nextBreakMinutes = Math.floor(nextBreakTime / 1000 / 60);
+    const nextBreakSeconds = Math.floor((nextBreakTime / 1000) % 60);
     
     console.log(`\n${'='.repeat(60)}`);
     console.log(`☕ TAKING BREAK!`);
-    console.log(`   Followed ${state.actionsSinceBreak} users`);
+    console.log(`   Worked for: ${workedMinutes}m ${workedSeconds}s`);
     console.log(`   Break duration: ${breakMinutes} minutes (${breakSeconds} seconds)`);
     console.log(`   Will resume at: ${new Date(state.breakUntil).toLocaleTimeString()}`);
-    console.log(`   Next break after: ${nextBreakTarget} more follows (RANDOM!)`);
+    console.log(`   Next break after: ${nextBreakMinutes}m ${nextBreakSeconds}s of work (RANDOM!)`);
     console.log(`${'='.repeat(60)}\n`);
-    
-    // Reset counter
-    state.actionsSinceBreak = 0;
     
     // DO HUMAN ACTIVITY DURING BREAK!
     if (breakConfig.duringBreak?.enabled) {
