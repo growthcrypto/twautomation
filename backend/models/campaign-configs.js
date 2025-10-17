@@ -40,10 +40,22 @@ const followUnfollowConfigSchema = new mongoose.Schema({
       activities: {
         goToHome: { type: Boolean, default: true },
         scrollFeed: { type: Boolean, default: true },
-        likePosts: { type: Boolean, default: true, probability: 30 },
-        readTweets: { type: Boolean, default: true, probability: 40 },
-        readReplies: { type: Boolean, default: true, probability: 20 },
-        visitProfiles: { type: Boolean, default: true, probability: 15 }
+        likePosts: {
+          enabled: { type: Boolean, default: true },
+          probability: { type: Number, default: 30 }
+        },
+        readTweets: {
+          enabled: { type: Boolean, default: true },
+          probability: { type: Number, default: 40 }
+        },
+        readReplies: {
+          enabled: { type: Boolean, default: true },
+          probability: { type: Number, default: 20 }
+        },
+        visitProfiles: {
+          enabled: { type: Boolean, default: true },
+          probability: { type: Number, default: 15 }
+        }
       }
     }
   },
