@@ -109,6 +109,10 @@ app.use('/api/resources', resourceRoutes);
 // Leads API
 app.use('/api/leads', leadsRoutes);
 
+// Debug API
+const debugRoutes = require('./routes/debug-api');
+app.use('/api/debug', debugRoutes);
+
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

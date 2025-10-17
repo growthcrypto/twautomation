@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug Tool - Twitter Automation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6">
+      <a href="/" class="text-blue-600 hover:underline">← Back to Dashboard</a>
+    </div>
+
+    <h1 class="text-3xl font-bold mb-8">🔍 Debug Tool</h1>
+
+    <!-- Account Selection -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Select Account</h2>
+      <select id="accountSelect" class="w-full p-2 border rounded">
+        <option value="">Loading accounts...</option>
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Actions</h2>
+      <div class="space-y-3">
+        <button onclick="checkPage()" class="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+          📸 Check Current Page (Screenshot + Info)
+        </button>
+        <button onclick="testFollow()" class="w-full bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          🎯 Test Follow (Click First Button)
+        </button>
+        <div class="flex gap-3">
+          <input 
+            type="text" 
+            id="communityId" 
+            placeholder="Community ID (e.g. 1699807431709041070)" 
+            class="flex-1 p-2 border rounded"
+          >
+          <button onclick="navToCommunity()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+            🚀 Go to Community
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="results" class="bg-white rounded-lg shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">Results</h2>
+      <div id="resultsContent" class="text-gray-600">
+        No results yet. Click an action above.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let accounts = [];
+
+    // Load accounts
+    async function loadAccounts() {
+      try {
+        const res = await fetch('/api/accounts');
+        const data = await res.json();
+        accounts = data.accounts || [];
+        
+        const select = document.getElementById('accountSelect');
+        select.innerHTML = accounts.length === 0
+          ? '<option value="">No accounts found</option>'
+          : accounts.map(a => `<option value="${a._id}">@${a.username} (${a.role})</option>`).join('');
+          
+        if (accounts.length > 0) {
+          select.selectedIndex = 0;
+        }
+      } catch (error) {
+        console.error('Error loading accounts:', error);
+        document.getElementById('accountSelect').innerHTML = '<option value="">Error loading accounts</option>';
+      }
+    }
+
+    function getSelectedAccountId() {
+      const select = document.getElementById('accountSelect');
+      return select.value;
+    }
+
+    function showResults(html) {
+      document.getElementById('resultsContent').innerHTML = html;
+    }
+
+    function showLoading() {
+      showResults('<div class="text-blue-600">⏳ Loading...</div>');
+    }
+
+    async function checkPage() {
+      const accountId = getSelectedAccountId();
+      if (!accountId) {
+        alert('Please select an account');
+        return;
+      }
+
+      showLoading();
+      
+      try {
+        const res = await fetch(`/api/debug/check-page/${accountId}`);
+        const data = await res.json();
+
+        if (!data.success) {
+          showResults(`<div class="text-red-600">❌ Error: ${data.error}</div>`);
+          return;
+        }
+
+        showResults(`
+          <div class="space-y-4">
+            <div>
+              <strong>URL:</strong> ${data.url}
+            </div>
+            <div>
+              <strong>Title:</strong> ${data.title}
+            </div>
+            <div>
+              <strong>Logged In:</strong> ${data.isLoggedIn ? '✅ Yes' : '❌ No'}
+            </div>
+            <div>
+              <strong>Follow Buttons:</strong> ${data.counts.followButtons}
+            </div>
+            <div>
+              <strong>User Cells:</strong> ${data.counts.userCells}
+            </div>
+            <div>
+              <strong>Articles:</strong> ${data.counts.articles}
+            </div>
+            <div>
+              <strong>Screenshot:</strong><br>
+              <img src="${data.screenshot}" class="border mt-2 max-w-full">
+            </div>
+            <details class="mt-4">
+              <summary class="cursor-pointer font-semibold">Sample HTML</summary>
+              <pre class="bg-gray-100 p-2 text-xs overflow-x-auto mt-2">${data.sampleHTML}</pre>
+            </details>
+          </div>
+        `);
+      } catch (error) {
+        showResults(`<div class="text-red-600">❌ Error: ${error.message}</div>`);
+      }
+    }
+
+    async function testFollow() {
+      const accountId = getSelectedAccountId();
+      if (!accountId) {
+        alert('Please select an account');
+        return;
+      }
+
+      showLoading();
+      
+      try {
+        const res = await fetch(`/api/debug/test-follow/${accountId}`, { method: 'POST' });
+        const data = await res.json();
+
+        if (data.success) {
+          showResults(`<div class="text-green-600">✅ ${data.message}</div>`);
+        } else {
+          showResults(`<div class="text-yellow-600">⚠️ ${data.message}<br>URL: ${data.url}</div>`);
+        }
+      } catch (error) {
+        showResults(`<div class="text-red-600">❌ Error: ${error.message}</div>`);
+      }
+    }
+
+    async function navToCommunity() {
+      const accountId = getSelectedAccountId();
+      const communityId = document.getElementById('communityId').value;
+      
+      if (!accountId) {
+        alert('Please select an account');
+        return;
+      }
+      
+      if (!communityId) {
+        alert('Please enter a community ID');
+        return;
+      }
+
+      showLoading();
+      
+      try {
+        const res = await fetch(`/api/debug/nav-community/${accountId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ communityId })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showResults(`<div class="text-red-600">❌ Error: ${data.error}</div>`);
+          return;
+        }
+
+        showResults(`
+          <div class="space-y-4">
+            <div class="text-green-600 font-semibold">✅ Navigated successfully</div>
+            <div><strong>URL:</strong> ${data.url}</div>
+            <div><strong>Follow Buttons Found:</strong> ${data.counts.followButtons}</div>
+            <div><strong>User Cells Found:</strong> ${data.counts.userCells}</div>
+            ${data.counts.followButtons === 0 ? 
+              '<div class="text-red-600 font-semibold">⚠️ NO FOLLOW BUTTONS FOUND - You may already be following everyone!</div>' : 
+              '<div class="text-green-600">✅ Found follow buttons - ready to follow!</div>'
+            }
+            <div>
+              <strong>Screenshot:</strong><br>
+              <img src="${data.screenshot}" class="border mt-2 max-w-full">
+            </div>
+          </div>
+        `);
+      } catch (error) {
+        showResults(`<div class="text-red-600">❌ Error: ${error.message}</div>`);
+      }
+    }
+
+    // Initialize
+    loadAccounts();
+  </script>
+</body>
+</html>
+
