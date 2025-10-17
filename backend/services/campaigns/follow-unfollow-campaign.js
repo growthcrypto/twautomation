@@ -1,6 +1,6 @@
 const { FollowUnfollowConfig, TwitterAccount, AutomationTask } = require('../../models');
 const twitterAutomationEngine = require('../twitter-automation-engine');
-const liveFollowEngine = require('../live-follow-engine-working'); // BACK TO WORKING VERSION - visits profiles
+const liveFollowEngine = require('../live-follow-engine-fixed'); // LIST-BASED - follows from list!
 const { incrementDailyCounter } = require('../../utils/account-helpers');
 const actionCoordinator = require('../action-coordinator');
 const moment = require('moment-timezone');

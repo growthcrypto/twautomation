@@ -57,19 +57,26 @@ class FixedFollowEngine {
             }
             
             // Check if it's a "Follow" button (not "Following")
-            if (text === 'Follow' || (ariaLabel.includes('Follow') && !ariaLabel.includes('Following'))) {
+            const isFollowButton = text === 'Follow' || 
+                                   text === 'follow' ||
+                                   (ariaLabel.includes('Follow') && !ariaLabel.includes('Following')) ||
+                                   btn.getAttribute('data-testid') === 'follow';
+            
+            if (isFollowButton && text !== 'Following') {
               // Get parent container to find username
               let parent = btn;
-              for (let i = 0; i < 10; i++) {
+              for (let i = 0; i < 15; i++) { // Increased from 10 to 15
                 if (!parent.parentElement) break;
                 parent = parent.parentElement;
                 
-                // Look for username link in parent
-                const usernameLink = parent.querySelector('a[href^="/"]');
+                // Look for username link in parent - try multiple selectors
+                let usernameLink = parent.querySelector('a[href^="/"][role="link"]');
+                if (!usernameLink) usernameLink = parent.querySelector('a[href^="/"]');
+                
                 if (usernameLink) {
                   const href = usernameLink.getAttribute('href');
                   const username = href.replace('/', '').split('/')[0];
-                  if (username && !username.includes('i/') && username.length > 0) {
+                  if (username && !username.includes('i/') && !username.includes('communities') && username.length > 0) {
                     debug.followButtons.push({
                       index: idx,
                       username: username,
@@ -80,7 +87,7 @@ class FixedFollowEngine {
                   }
                 }
               }
-            } else if (text === 'Following') {
+            } else if (text === 'Following' || text === 'following') {
               debug.followingButtons++;
             } else if (text.length > 0 && text.length < 20) {
               debug.otherButtons.push(text);
