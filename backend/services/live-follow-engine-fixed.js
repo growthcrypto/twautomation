@@ -114,9 +114,12 @@ class FixedFollowEngine {
           continue;
         }
 
-        // Process visible buttons only (take first 3-5 from current view)
-        const visibleBatch = allButtons.slice(0, Math.min(5, allButtons.length));
+        // Process visible buttons only (random batch size 2-6 users)
+        const batchSize = this.randomBetween(2, 6);
+        const visibleBatch = allButtons.slice(0, Math.min(batchSize, allButtons.length));
         let followedThisRound = 0;
+        
+        console.log(`📦 Processing batch of ${visibleBatch.length} users...`);
         
         for (const btnInfo of visibleBatch) {
           if (followCount >= maxFollows) break;
@@ -132,11 +135,38 @@ class FixedFollowEngine {
 
           console.log(`👁️  Checking @${username}...`);
 
+          // Random "thinking" pause (10% chance)
+          if (Math.random() * 100 < 10) {
+            const thinkTime = this.randomBetween(1000, 3000);
+            console.log(`🤔 Pausing to think for ${Math.round(thinkTime/1000)}s...`);
+            await this.humanDelay(thinkTime, thinkTime);
+          }
+
           // Random skip (humanization)
           const skipChance = config.randomSkipProbability || 15;
           if (Math.random() * 100 < skipChance) {
             console.log(`👻 Skipping @${username} randomly (humanization)`);
             continue;
+          }
+
+          // Occasionally peek at profile before following (20% chance)
+          if (Math.random() * 100 < 20) {
+            console.log(`👀 Quick profile peek @${username}...`);
+            try {
+              await page.evaluate((uname) => {
+                const links = document.querySelectorAll(`a[href="/${uname}"]`);
+                if (links[0]) {
+                  links[0].click();
+                }
+              }, username);
+              await this.humanDelay(1500, 3000);
+              
+              // Go back
+              await page.goBack();
+              await this.humanDelay(1000, 2000);
+            } catch (err) {
+              console.log(`⚠️  Profile peek failed, continuing...`);
+            }
           }
 
           // Find and click the button (simplified - just find by username)
@@ -182,9 +212,16 @@ class FixedFollowEngine {
               followedThisRound++;
               console.log(`✅ Followed @${username} (${followCount}/${maxFollows})`);
 
-              // Short pause between follows
-              const pauseTime = this.randomBetween(2, 4);
-              await this.humanDelay(pauseTime * 1000, pauseTime * 1000);
+              // Variable pause between follows (gets longer as we follow more)
+              const basePause = this.randomBetween(2, 4);
+              const extraPause = followCount % 5 === 0 ? this.randomBetween(3, 6) : 0; // Extra pause every 5 follows
+              const totalPause = basePause + extraPause;
+              
+              if (extraPause > 0) {
+                console.log(`⏸️  Taking longer break (${totalPause}s)...`);
+              }
+              
+              await this.humanDelay(totalPause * 1000, totalPause * 1000);
             } else {
               console.log(`⚠️  Couldn't click button for @${username} (not visible or changed)`);
             }
@@ -200,13 +237,26 @@ class FixedFollowEngine {
           if (followedThisRound > 0) {
             // We followed people, scroll smoothly to see new users
             console.log(`📜 Scrolling down smoothly... (${followCount}/${maxFollows} follows so far)`);
-            await this.humanScroll(page);
+            
+            // Vary scroll distance (sometimes scroll more, sometimes less)
+            const scrollVariation = Math.random() * 100;
+            if (scrollVariation < 20) {
+              // 20% chance: Small scroll
+              await this.humanScroll(page, 200, 400);
+            } else if (scrollVariation < 90) {
+              // 70% chance: Normal scroll
+              await this.humanScroll(page);
+            } else {
+              // 10% chance: Big scroll
+              await this.humanScroll(page, 600, 900);
+            }
+            
             await this.humanDelay(2000, 3000);
             scrollAttempts = 0; // Reset since we're making progress
           } else {
             // No one followed this round, scroll more aggressively
             console.log(`⬇️  Scrolling for fresh users...`);
-            await this.humanScroll(page);
+            await this.humanScroll(page, 400, 700);
             await this.humanDelay(1500, 2000);
             scrollAttempts++;
           }
@@ -351,8 +401,8 @@ class FixedFollowEngine {
   /**
    * Human-like scroll (smooth and natural)
    */
-  async humanScroll(page) {
-    const scrollAmount = this.randomBetween(300, 600);
+  async humanScroll(page, minScroll = 300, maxScroll = 600) {
+    const scrollAmount = this.randomBetween(minScroll, maxScroll);
     await page.evaluate((distance) => {
       window.scrollBy({
         top: distance,
