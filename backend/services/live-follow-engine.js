@@ -38,16 +38,24 @@ class LiveFollowEngine {
       const alreadyFollowed = this.followedInSession.get(sessionKey);
 
       // Keep scrolling and following until we hit max
-      while (followCount < maxFollows) {
+      let scrollAttempts = 0;
+      const maxScrollAttempts = 20; // Prevent infinite loops
+      
+      while (followCount < maxFollows && scrollAttempts < maxScrollAttempts) {
         // Get visible users on screen
         const visibleUsers = await page.$$('[data-testid="UserCell"]');
         
+        console.log(`📋 Found ${visibleUsers.length} visible users on screen`);
+        
         if (visibleUsers.length === 0) {
-          console.log('⚠️  No more users visible, scrolling...');
+          console.log('⚠️  No users visible, scrolling...');
           await this.humanScroll(page);
           await this.humanDelay(1000, 2000);
+          scrollAttempts++;
           continue;
         }
+
+        let processedThisScroll = 0;
 
         // Process each visible user
         for (const userCell of visibleUsers) {
@@ -56,16 +64,26 @@ class LiveFollowEngine {
           try {
             // Extract username
             const username = await userCell.$eval('[data-testid="User-Name"] a[href^="/"]', 
-              el => el.getAttribute('href').replace('/', ''));
+              el => el.getAttribute('href').replace('/', '')).catch(() => null);
+
+            if (!username) {
+              console.log('⚠️  Could not extract username from cell');
+              continue;
+            }
 
             // Skip if already followed in this session
-            if (alreadyFollowed.has(username)) continue;
+            if (alreadyFollowed.has(username)) {
+              continue; // Silent skip - already processed
+            }
+
+            console.log(`👁️  Checking @${username}...`);
 
             // Random skip (humanization)
             const skipChance = config.randomSkipProbability || 20; // 20% chance to skip
             if (Math.random() * 100 < skipChance) {
               console.log(`👻 Skipping @${username} randomly (humanization)`);
               alreadyFollowed.add(username); // Mark as seen
+              processedThisScroll++;
               continue;
             }
 
@@ -73,7 +91,9 @@ class LiveFollowEngine {
             const followButton = await userCell.$('[data-testid="follow"]');
             if (!followButton) {
               // Already following or button not found
+              console.log(`⏭️  @${username} - already following or no follow button`);
               alreadyFollowed.add(username);
+              processedThisScroll++;
               continue;
             }
 
@@ -118,6 +138,7 @@ class LiveFollowEngine {
             
             followCount++;
             alreadyFollowed.add(username);
+            processedThisScroll++;
             console.log(`✅ Followed @${username} (${followCount}/${maxFollows})`);
 
             // Random pause between follows
@@ -129,15 +150,22 @@ class LiveFollowEngine {
 
           } catch (error) {
             // User cell might have disappeared, skip it
+            console.log(`⚠️  Error processing user cell: ${error.message}`);
             continue;
           }
         }
 
-        // Scroll to load more users
+        // If we processed some users but didn't reach the goal, scroll for more
         if (followCount < maxFollows) {
+          console.log(`📜 Scrolling for more users... (${followCount}/${maxFollows} follows so far, processed ${processedThisScroll} users this scroll)`);
           await this.humanScroll(page);
           await this.humanDelay(1500, 3000);
+          scrollAttempts++;
         }
+      }
+
+      if (scrollAttempts >= maxScrollAttempts) {
+        console.log(`⚠️  Reached max scroll attempts, stopping (${followCount} follows completed)`);
       }
 
       return { success: true, followedCount: followCount };
@@ -270,7 +298,28 @@ class LiveFollowEngine {
    * Clear followed users session (for fresh start)
    */
   clearSession(accountId) {
-    this.followedInSession.delete(accountId.toString());
+    if (accountId) {
+      this.followedInSession.delete(accountId.toString());
+      console.log(`🗑️  Cleared follow session cache for account ${accountId}`);
+    } else {
+      this.followedInSession.clear();
+      console.log(`🗑️  Cleared all follow session caches`);
+    }
+  }
+
+  /**
+   * Get session stats
+   */
+  getSessionStats(accountId) {
+    const sessionKey = accountId.toString();
+    if (this.followedInSession.has(sessionKey)) {
+      const followed = this.followedInSession.get(sessionKey);
+      return {
+        totalProcessed: followed.size,
+        usernames: Array.from(followed)
+      };
+    }
+    return { totalProcessed: 0, usernames: [] };
   }
 }
 
